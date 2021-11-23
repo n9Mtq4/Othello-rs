@@ -26,6 +26,8 @@ impl OthelloState {
 		}
 	}
 	
+	
+	
 	pub fn player_coeff(&self) -> i8 {
 		if self.ply & 1 == 0 { 1 } else { -1 }
 	}
@@ -92,6 +94,19 @@ impl OthelloState {
 	
 	pub fn to_short_string(&self) -> String {
 		format!("{},{},{},{}", self.ply, self.black, self.white, self.hash)
+	}
+	
+	pub fn ply(&self) -> u8 {
+		self.ply
+	}
+	pub fn black(&self) -> u64 {
+		self.black
+	}
+	pub fn white(&self) -> u64 {
+		self.white
+	}
+	pub fn hash(&self) -> u32 {
+		self.hash
 	}
 	
 }

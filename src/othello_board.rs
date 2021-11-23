@@ -99,7 +99,6 @@ fn generate_moves_loops(bb_self: u64, bb_enemy: u64) -> u64 {
 	
 }
 
-
 pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	
 	let open: u64 = !(bb_self | bb_enemy);
@@ -172,6 +171,11 @@ pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	
 	return moves;
 	
+}
+
+#[inline(always)]
+pub fn number_of_moves(bb_self: u64, bb_enemy: u64) -> u8 {
+	return generate_moves(bb_self, bb_enemy).count_ones() as u8;
 }
 
 pub fn make_move(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
