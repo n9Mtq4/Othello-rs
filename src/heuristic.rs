@@ -1,4 +1,4 @@
-use crate::othello_board::number_of_moves;
+use crate::othello_board::{evaluation, number_of_moves};
 
 const STABLE_2_0: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000001_00000011;
 const STABLE_2_1: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_10000000_11000000;
@@ -9,7 +9,24 @@ const STABLE_3_1: u64 = 0b00000111_00000011_00000001_00000000_00000000_00000000_
 const STABLE_3_2: u64 = 0b00000000_00000000_00000000_00000000_00000000_10000000_11000000_11100000;
 const STABLE_3_3: u64 = 0b11100000_11000000_10000000_00000000_00000000_00000000_00000000_00000000;
 
-pub fn heuristic_fast(ply: u8, black: u64, white: u64) -> i32 {
+pub fn heuristic_nega(me: u64, enemy: u64) -> i32 {
+	
+	let moves = number_of_moves(me, enemy);
+	
+	if moves == 0 {
+		return evaluation(me, enemy) as i32;
+	}
+	
+	let board_sum = heuristic_board_weight(me, enemy);
+	let stability = heuristic_stability(me, enemy);
+	
+	return 8i32 * board_sum +
+		202 * (moves as i32) +
+		2016 * stability;
+	
+}
+
+pub fn heuristic_minimax(ply: u8, black: u64, white: u64) -> i32 {
 	
 	let moves = if ply & 1 == 0 {
 		number_of_moves(black, white)
@@ -34,14 +51,14 @@ fn heuristic_board_weight(black: u64, white: u64) -> i32 {
 	
 	let mut board_sum: i32 = 0;
 	
-	board_sum += 120i32 * ((black & 9295429630892703873u64).count_ones() - (white & 9295429630892703873u64).count_ones()) as i32;
-	board_sum += -20i32 * ((black & 4792111478498951490u64).count_ones() - (white & 4792111478498951490u64).count_ones()) as i32;
-	board_sum += 20i32 * ((black & 2594215222373842980u64).count_ones() - (white & 2594215222373842980u64).count_ones()) as i32;
-	board_sum += 5i32 * ((black & 1729382813125312536u64).count_ones() - (white & 1729382813125312536u64).count_ones()) as i32;
-	board_sum += -40i32 * ((black & 18577348462920192u64).count_ones() - (white & 18577348462920192u64).count_ones()) as i32;
-	board_sum += -5i32 * ((black & 16961350949551104u64).count_ones() - (white & 16961350949551104u64).count_ones()) as i32;
-	board_sum += 15i32 * ((black & 39582420959232u64).count_ones() - (white & 39582420959232u64).count_ones()) as i32;
-	board_sum += 3i32 * ((black & 26646985310208u64).count_ones() - (white & 26646985310208u64).count_ones()) as i32;
+	board_sum += 120i32 * ((black & 9295429630892703873u64).count_ones() as i32 - (white & 9295429630892703873u64).count_ones() as i32);
+	board_sum += -20i32 * ((black & 4792111478498951490u64).count_ones() as i32 - (white & 4792111478498951490u64).count_ones() as i32);
+	board_sum += 20i32 * ((black & 2594215222373842980u64).count_ones() as i32 - (white & 2594215222373842980u64).count_ones() as i32);
+	board_sum += 5i32 * ((black & 1729382813125312536u64).count_ones() as i32 - (white & 1729382813125312536u64).count_ones() as i32);
+	board_sum += -40i32 * ((black & 18577348462920192u64).count_ones() as i32 - (white & 18577348462920192u64).count_ones() as i32);
+	board_sum += -5i32 * ((black & 16961350949551104u64).count_ones() as i32 - (white & 16961350949551104u64).count_ones() as i32);
+	board_sum += 15i32 * ((black & 39582420959232u64).count_ones() as i32 - (white & 39582420959232u64).count_ones() as i32);
+	board_sum += 3i32 * ((black & 26646985310208u64).count_ones() as i32 - (white & 26646985310208u64).count_ones() as i32);
 	
 	return board_sum;
 	

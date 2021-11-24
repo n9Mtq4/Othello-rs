@@ -285,6 +285,16 @@ pub fn game_over(bb_p1: u64, bb_p2: u64) -> bool {
 			generate_moves(bb_p2, bb_p1) == 0);
 }
 
+#[inline(always)]
+pub fn evaluation(black: u64, white: u64) -> i8 {
+	(black.count_ones() as i8) - (white.count_ones() as i8)
+}
+
+#[inline(always)]
+pub fn empty_disks(black: u64, white: u64) -> u8 {
+	(!(black | white)).count_ones() as u8
+}
+
 pub fn to_idx_move_vec(moves: u64) -> Vec<u8> {
 	
 	let num_moves: usize = moves.count_ones() as usize;

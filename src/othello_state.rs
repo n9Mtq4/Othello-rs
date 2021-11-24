@@ -26,8 +26,6 @@ impl OthelloState {
 		}
 	}
 	
-	
-	
 	pub fn player_coeff(&self) -> i8 {
 		if self.ply & 1 == 0 { 1 } else { -1 }
 	}
