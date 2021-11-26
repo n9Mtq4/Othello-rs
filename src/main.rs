@@ -20,7 +20,7 @@ fn main() {
 	
 	println!("eval={}", heuristic_minimax(initial_state.ply(), initial_state.black(), initial_state.white()));
 	
-	let state = OthelloState::new(42, 9241634274023193656u64, 4485055359014469632u64, 0);
+	let state = OthelloState::new(40, 9241636472995985464u64, 4484490210071479296u64, 0);
 	println!("{}", state);
 	
 	let q = solve_endgame_mo(state.black(), state.white(), -1, 1, 7);

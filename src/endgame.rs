@@ -1,11 +1,11 @@
-use crate::heuristic::heuristic_nega;
+use crate::heuristic::heuristic_eg_slow_nega;
 use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
 
 pub fn solve_endgame_root() {
 	
 }
 
-/// Fail-hard negamax for endgame solving
+/// Fail-soft negamax for endgame solving
 /// Does not use move ordering
 /// https://www.chessprogramming.org/Alpha-Beta
 pub fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
@@ -24,6 +24,7 @@ pub fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 	}
 	
 	let num_moves: usize = moves.count_ones() as usize;
+	let mut best_score = -127;
 	
 	// for each move
 	let mut move_idx: usize = 0;
@@ -36,11 +37,14 @@ pub fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 			let q = -solve_endgame_nomo(enemy, me, -beta, -alpha);
 			
 			if q >= beta {
-				return beta;
+				return q;
 			}
 			
-			if q > alpha {
-				alpha = q;
+			if q > best_score {
+				best_score = q;
+				if q > alpha {
+					alpha = q;
+				}
 			}
 			
 			move_idx += 1;
@@ -48,11 +52,11 @@ pub fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 		i += 1;
 	}
 	
-	return alpha;
+	return best_score;
 	
 }
 
-/// Fail-hard negamax for endgame solving
+/// Fail-soft negamax for endgame solving
 /// Uses move ordering for states with more than stop_mo_at_empties number of empty disks
 /// Optimal stop_mo_at_empties=7
 pub fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_empties: u8) -> i8 {
@@ -80,27 +84,33 @@ pub fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at
 	
 	// sort the child states, best one first
 	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
-	states.sort_by_cached_key(|(me, enemy)| -heuristic_nega(*me, *enemy));
+	states.sort_by_key(|(me, enemy)| -heuristic_eg_slow_nega(*me, *enemy));
+	
+	let mut best_score = -127;
+	let empty_disks = empty_disks(me, enemy);
 	
 	// for each child state
 	for (me, enemy) in states {
 		
-		let q = if empty_disks(me, enemy) > stop_mo_at_empties {
+		let q = if empty_disks > stop_mo_at_empties {
 			-solve_endgame_mo(enemy, me, -beta, -alpha, stop_mo_at_empties)
 		} else {
 			-solve_endgame_nomo(enemy, me, -beta, -alpha)
 		};
 		
 		if q >= beta {
-			return beta;
+			return q;
 		}
 		
-		if q > alpha {
-			alpha = q;
+		if q > best_score {
+			best_score = q;
+			if q > alpha {
+				alpha = q;
+			}
 		}
 		
 	}
 	
-	return alpha;
+	return best_score;
 	
 }
