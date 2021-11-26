@@ -10,5 +10,4 @@ tch = "0.6.1"
 
 [profile.release]
 opt-level = 3
-target-cpu = "native"
 lto = "fat"
