@@ -1,3 +1,6 @@
+#![allow(unused_must_use)]
+#![allow(dead_code)]
+
 use std::fmt::{Display, Formatter};
 use crate::othello_board::{game_over, generate_moves, make_move, to_idx_move_vec};
 use crate::othello_hash::KEYS;

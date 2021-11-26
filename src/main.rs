@@ -4,8 +4,8 @@ mod othello_hash;
 mod heuristic;
 mod endgame;
 
-use crate::endgame::{solve_endgame_mo, solve_endgame_nomo};
-use crate::heuristic::heuristic_minimax;
+use crate::endgame::solve_endgame_root;
+use crate::heuristic::{heuristic_eg_slow_nega, heuristic_minimax};
 use crate::othello_state::OthelloState;
 
 fn main() {
@@ -23,7 +23,8 @@ fn main() {
 	let state = OthelloState::new(40, 9241636472995985464u64, 4484490210071479296u64, 0);
 	println!("{}", state);
 	
-	let q = solve_endgame_mo(state.black(), state.white(), -1, 1, 7);
-	println!("{}. score={}", 0, q);
+	println!("guessed score={}", heuristic_eg_slow_nega(state.black(), state.white()));
+	let (mov, q) = solve_endgame_root(state.black(), state.white(), 0, 2);
+	println!("{}. move={}, score={}", 0, mov, q);
 	
 }
