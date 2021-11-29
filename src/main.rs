@@ -11,7 +11,7 @@ fn main() {
 	let state = OthelloState::new(40, 9241636472995985464u64, 4484490210071479296u64, 0);
 	println!("{}", state);
 	
-	let (mov, q) = solve_endgame_root(state.black(), state.white(), 0, 2);
+	let (mov, q) = solve_endgame_root(state.black(), state.white(), -100, 100);
 	println!("{}. move={}, score={}", 0, mov, q);
 	
 }

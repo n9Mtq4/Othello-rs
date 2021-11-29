@@ -28,6 +28,7 @@ fn flip_diag_a1h8(mut x: u64) -> u64 {
 
 /// Guesses how many centidisks (100 * disks) `me` will have at the end of the game.
 /// Positions with 7-25 empties are within the expected range for this function.
+/// MAE=937 centidisks
 /// Returns from POV of `me` and is for use in a negamax framework.
 fn heuristic_eg_nega(me: u64, enemy: u64) -> i32 {
 	
