@@ -4,11 +4,13 @@ mod othello_hash;
 mod endgame;
 mod neural_heuristic;
 mod neural_search;
+mod server;
 
 use tch::Tensor;
 use crate::endgame::solve_endgame_root;
 use crate::neural_search::{nnsearch_mo, nnsearch_nomo};
 use crate::othello_state::OthelloState;
+use crate::server::server_start;
 
 fn main() {
 	
@@ -20,7 +22,9 @@ fn main() {
 	
 	let model = tch::CModule::load("data/model.pt").expect("loading model failed");
 	
-	let prediction = nnsearch_mo(&model, state.black(), state.white(), -100000, 100000, 5, 3);
-	println!("{}", prediction);
+	server_start();
+	
+	// let prediction = nnsearch_mo(&model, state.black(), state.white(), -100000, 100000, 5, 3);
+	// println!("{}", prediction);
 	
 }
