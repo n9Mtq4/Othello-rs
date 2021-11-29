@@ -100,12 +100,15 @@ impl OthelloState {
 	pub fn ply(&self) -> u8 {
 		self.ply
 	}
+	
 	pub fn black(&self) -> u64 {
 		self.black
 	}
+	
 	pub fn white(&self) -> u64 {
 		self.white
 	}
+	
 	pub fn hash(&self) -> u32 {
 		self.hash
 	}
@@ -115,10 +118,10 @@ impl OthelloState {
 impl Display for OthelloState {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
 		for i in 0..64 {
-			if i % 8 == 0 { write!(f, "\n"); }
-			if self.black & (1u64 << i) != 0 { write!(f, "O "); }
-			else if self.white & (1u64 << i) != 0 { write!(f, "@ "); }
-			else { write!(f, "  "); }
+			if i % 8 == 0 { write!(f, "\n")?; }
+			if self.black & (1u64 << i) != 0 { write!(f, "O ")?; }
+			else if self.white & (1u64 << i) != 0 { write!(f, "@ ")?; }
+			else { write!(f, "  ")?; }
 		}
 		write!(f, "\nply={}, black={}, white={}, hash={}", self.ply, self.black, self.white, self.hash)
 	}

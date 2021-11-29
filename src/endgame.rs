@@ -120,7 +120,7 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 		.collect();
 	
 	// sort the child states, best one first
-	states.sort_by_cached_key(|(_, me, enemy)| -heuristic_eg_nega(*me, *enemy));
+	states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega(*enemy, *me));
 	
 	let mut best_score = -127;
 	let mut best_move: u8 = 65;
@@ -228,7 +228,7 @@ fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_emp
 	
 	// sort the child states, best one first
 	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
-	states.sort_by_cached_key(|(me, enemy)| -heuristic_eg_nega(*me, *enemy));
+	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega(*enemy, *me));
 	
 	let mut best_score = -127;
 	let empty_disks = empty_disks(me, enemy);
