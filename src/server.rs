@@ -34,7 +34,7 @@ fn server_handle_client(model: &CModule, mut stream: TcpStream) {
 	println!("me={}, enemy={}, best_move={}", me, enemy, mov);
 	
 	// return best move to client
-	stream.write(mov.to_string().as_bytes()).unwrap();
+	stream.write(format!("{}\n", mov).as_bytes()).unwrap();
 	stream.flush();
 	stream.shutdown(Shutdown::Both).unwrap();
 	
