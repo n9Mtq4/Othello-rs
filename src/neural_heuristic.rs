@@ -1,6 +1,6 @@
 use std::slice::Iter;
 use tch::{CModule, Tensor};
-use crate::othello_board::{generate_moves, make_move, to_bit_move_vec, to_idx_move_vec};
+use crate::othello_board::{evaluation, generate_moves, make_move, to_bit_move_vec, to_idx_move_vec};
 
 fn board_to_tensor(me: u64, enemy: u64) -> Tensor {
 	
@@ -38,6 +38,11 @@ pub fn nnpredict_batch(model: &CModule, v: &Vec<(u64, u64)>) -> Vec<f32> {
 pub fn nnpredict_d1(model: &CModule, me: u64, enemy: u64) -> i32 {
 	
 	let moves = generate_moves(me, enemy);
+	
+	if moves == 0 {
+		return 100 * (evaluation(me, enemy) as i32);
+	}
+	
 	let states: Vec<Tensor> = to_bit_move_vec(moves)
 		.iter()
 		.map(|mov| {
