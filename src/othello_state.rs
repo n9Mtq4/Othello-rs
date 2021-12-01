@@ -1,4 +1,3 @@
-#![allow(unused_must_use)]
 #![allow(dead_code)]
 
 use std::fmt::{Display, Formatter};

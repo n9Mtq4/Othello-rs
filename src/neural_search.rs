@@ -1,6 +1,6 @@
 use tch::CModule;
 use crate::neural_heuristic::{nnpredict_batch, nnpredict_d1};
-use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
+use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
 
 pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8) -> (u8, i32) {
 	
@@ -24,7 +24,7 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 	
 	// apply each move and get the state
 	// TODO: optimize sorting here
-	let mut states: Vec<(u8, u64, u64)> = to_idx_move_vec(moves)
+	let states: Vec<(u8, u64, u64)> = to_idx_move_vec(moves)
 		.iter()
 		.map(|mov| {
 			let (new_me, new_enemy) = make_move(1u64 << *mov, me, enemy);
@@ -70,7 +70,7 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 	
 }
 
-pub fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8) -> i32 {
+fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8) -> i32 {
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
@@ -124,7 +124,7 @@ pub fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 }
 
 
-pub fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, stop_mo_at_depth: i8) -> i32 {
+fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, stop_mo_at_depth: i8) -> i32 {
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
@@ -146,7 +146,7 @@ pub fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i
 	
 	// apply each move and get the state
 	// TODO: optimize sorting here
-	let mut states: Vec<(u64, u64)> = to_idx_move_vec(moves)
+	let states: Vec<(u64, u64)> = to_idx_move_vec(moves)
 		.iter()
 		.map(|mov| make_move(1u64 << *mov, me, enemy))
 		.collect();

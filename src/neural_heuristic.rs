@@ -1,6 +1,7 @@
-use std::slice::Iter;
+#![allow(dead_code)]
+
 use tch::{CModule, Tensor};
-use crate::othello_board::{evaluation, generate_moves, make_move, to_bit_move_vec, to_idx_move_vec};
+use crate::othello_board::{evaluation, generate_moves, make_move, to_bit_move_vec};
 
 fn board_to_tensor(me: u64, enemy: u64) -> Tensor {
 	

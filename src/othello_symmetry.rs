@@ -96,7 +96,6 @@ pub fn sym_invert_loc(transform: &[u8; 64], pos: u8) -> u8 {
 	}
 	
 	panic!("didn't find mov in sym_invert");
-	return 65;
 	
 }
 
@@ -150,7 +149,7 @@ fn sym_apply_to_bb(transform: &[u8; 64], bb: u64) -> u64 {
 		// if the bitboard has the ith bit set
 		if bb & (1u64 << i) != 0 {
 			// set the transformed bit in the new bitboard
-			new_board |= (1u64 << transform[i])
+			new_board |= 1u64 << transform[i]
 		}
 	}
 	

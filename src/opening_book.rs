@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::hash::{Hash, Hasher};
-use std::io::Read;
 use byteorder::{LittleEndian, ReadBytesExt};
 use crate::othello_symmetry::{sym_invert_loc, sym_min_board};
 
