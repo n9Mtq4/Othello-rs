@@ -12,6 +12,6 @@ use crate::server::server_start;
 
 fn main() {
 	
-	server_start();
+	server_start(35326u16);
 	
 }
