@@ -4,20 +4,34 @@ use std::io::{Read, Write};
 use std::str;
 use tch::CModule;
 use crate::neural_search::nnsearch_root;
-use crate::othello_board::empty_disks;
-use crate::solve_endgame_root;
+use crate::othello_board::{empty_disks, generate_moves};
+use crate::endgame::solve_endgame_root;
+use crate::opening_book::{OthelloBook, read_book, search_book};
 
-fn server_get_move(model: &CModule, me: u64, enemy: u64) -> u8 {
+fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64) -> u8 {
 	
+	// if there are no moves, pass
+	if generate_moves(me, enemy) == 0 {
+		return 65;
+	}
+	
+	// if there are <= 18 disks left, solve the endgame
 	if empty_disks(me, enemy) <= 18 {
 		return solve_endgame_root(me, enemy, -100, 100).0;
 	}
 	
+	// try the opening book
+	let book_move = search_book(book, me, enemy);
+	if book_move < 64 {
+		return book_move;
+	}
+	
+	// otherwise perform a negamax neural network search
 	return nnsearch_root(model, me, enemy, -640000, 640000, 5).0;
 	
 }
 
-fn server_handle_client(model: &CModule, mut stream: TcpStream) {
+fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStream) {
 	
 	// read data from client
 	let mut data = [0 as u8; 128];
@@ -30,7 +44,7 @@ fn server_handle_client(model: &CModule, mut stream: TcpStream) {
 	let enemy: u64 = tokens[1].parse().unwrap();
 	
 	// evaluate position
-	let mov = server_get_move(model, me, enemy);
+	let mov = server_get_move(book, model, me, enemy);
 	println!("me={}, enemy={}, best_move={}", me, enemy, mov);
 	
 	// return best move to client
@@ -42,7 +56,11 @@ fn server_handle_client(model: &CModule, mut stream: TcpStream) {
 
 pub fn server_start() {
 	
+	let book = read_book("data/book.bin");
+	println!("Loaded {} positions into book", book.len());
+	
 	let model = tch::CModule::load("data/model.pt").expect("loading model failed");
+	println!("Loaded neural network heuristic");
 	
 	let listener = TcpListener::bind("0.0.0.0:35326").unwrap();
 	// accept connections and process them, spawning a new thread for each one
@@ -52,8 +70,8 @@ pub fn server_start() {
 			Ok(stream) => {
 				// println!("New connection: {}", stream.peer_addr().unwrap());
 				// thread::spawn(move|| {
-				// TODO: spawn thread & share model
-				server_handle_client(&model, stream);
+				// TODO: spawn thread & share book & model
+				server_handle_client(&book, &model, stream);
 				// });
 			}
 			Err(e) => {

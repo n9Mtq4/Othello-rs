@@ -5,26 +5,13 @@ mod endgame;
 mod neural_heuristic;
 mod neural_search;
 mod server;
+mod opening_book;
+mod othello_symmetry;
 
-use tch::Tensor;
-use crate::endgame::solve_endgame_root;
-use crate::neural_search::{nnsearch_mo, nnsearch_nomo};
-use crate::othello_state::OthelloState;
 use crate::server::server_start;
 
 fn main() {
 	
-	let state = OthelloState::new(40, 9241636472995985464u64, 4484490210071479296u64, 0);
-	println!("{}", state);
-	
-	// let (mov, q) = solve_endgame_root(state.black(), state.white(), -100, 100);
-	// println!("{}. move={}, score={}", 0, mov, q);
-	
-	let model = tch::CModule::load("data/model.pt").expect("loading model failed");
-	
 	server_start();
-	
-	// let prediction = nnsearch_mo(&model, state.black(), state.white(), -100000, 100000, 5, 3);
-	// println!("{}", prediction);
 	
 }
