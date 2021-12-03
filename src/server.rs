@@ -92,9 +92,8 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 	
 	// try the opening book
 	if params.use_book {
-		let book_move = search_book(book, me, enemy);
-		if book_move < 64 {
-			return (book_move, i16::MAX);
+		if let Some(res) = search_book(book, me, enemy) {
+			return res;
 		}
 	}
 	
