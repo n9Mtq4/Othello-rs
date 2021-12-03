@@ -42,11 +42,15 @@ impl SearchParams {
 	/// E - 6 bits for endgame depth (0-63)
 	fn from_u16(p: u16) -> Self {
 		
-		let end_depth = ((p >> 0) & 0b111111) as u8;
-		let mid_depth = ((p >> 6) & 0b111111) as u8;
+		let mut end_depth = ((p >> 0) & 0b111111) as u8;
+		let mut mid_depth = ((p >> 6) & 0b111111) as u8;
 		let solve_end_exact = ((p >> 12) & 0b1) != 0;
 		let use_book = ((p >> 13) & 0b1) != 0;
 		let adj_time = ((p >> 14) & 0b1) != 0;
+		
+		// ensure not too deep
+		end_depth = end_depth.clamp(1, 20);
+		mid_depth = mid_depth.clamp(1, 6);
 		
 		SearchParams {
 			adj_time,
@@ -197,6 +201,7 @@ pub fn server_start(port: u16) {
 				let my_book = book.clone();
 				let my_model = model.clone();
 				thread::spawn(move || {
+					// TODO: only lock model when using it (now locks even for endgame search)
 					server_handle_client(&my_book, &my_model.lock().unwrap(), stream);
 				});
 			}
