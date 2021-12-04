@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use tch::{CModule, Tensor};
+use tch::{CModule, Device, Tensor};
 use crate::othello_board::{evaluation, generate_moves, make_move, to_bit_move_vec};
 
 /// Convert an othello board into a tensor
@@ -31,9 +31,11 @@ pub fn nnpredict_batch(model: &CModule, v: &Vec<(u64, u64)>) -> Vec<f32> {
 		.collect();
 	
 	// stack all board tensors into 1 batch
-	let t = Tensor::stack(&states, 0);
+	let t = Tensor::stack(&states, 0).to(Device::Cuda(0));
 	
-	let output: Tensor = model.forward_ts(&[t]).expect("model prediction failed");
+	let output: Tensor = model.forward_ts(&[t])
+		.expect("model prediction failed")
+		.to(Device::Cpu);
 	
 	Vec::from(output)
 	
@@ -61,11 +63,12 @@ pub fn nnpredict_d1(model: &CModule, me: u64, enemy: u64) -> i32 {
 		.collect();
 	
 	// move all tensors into 1 batch
-	let t = Tensor::stack(&states, 0);
+	let t = Tensor::stack(&states, 0).to(Device::Cuda(0));
 	
 	// perform prediction on batch & do 1 level of negamax
-	let output: Tensor = model.forward_ts(&[t]).expect("model prediction failed");
-	let best_child: Tensor = output.min();
+	let output: Tensor = model.forward_ts(&[t])
+		.expect("model prediction failed");
+	let best_child: Tensor = output.min().to(Device::Cpu);
 	
 	(-100.0 * 64.0 * f32::from(best_child)) as i32
 	

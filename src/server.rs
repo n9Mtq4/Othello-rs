@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use byteorder::{NetworkEndian, WriteBytesExt};
-use tch::CModule;
+use tch::{CModule, Device, Kind};
 use crate::neural_search::nnsearch_root;
 use crate::othello_board::{empty_disks, generate_moves};
 use crate::endgame::solve_endgame_root;
@@ -178,8 +178,11 @@ pub fn server_start(port: u16) {
 	println!("Loaded {} positions into book", book.len());
 	
 	// load pytorch model
-	let model = Arc::new(Mutex::new(tch::CModule::load("data/model.pt")
-		.expect("loading model failed")));
+	let mut model = tch::CModule::load("data/model.pt")
+		.unwrap();
+	model.to(Device::Cuda(0), Kind::Float, false);
+	
+	let model = Arc::new(Mutex::new(model));
 	
 	// count network parameters for nice log message
 	let num_params = model.lock().unwrap().named_parameters().unwrap()
