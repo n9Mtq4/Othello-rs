@@ -32,7 +32,7 @@ pub fn search_book(book: &OthelloBook, me: u64, enemy: u64) -> Option<(u8, i16)>
 	// search book for the min board
 	// if found, invert the min sym transformation
 	match book.get(&key) {
-		Some(mq) => Some((sym_invert_loc(transform, mq.best_move), 200 * (mq.eval as i16))),
+		Some(mq) => Some((sym_invert_loc(transform, mq.best_move), 50 * (mq.eval as i16))),
 		None => None
 	}
 	
