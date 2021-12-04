@@ -86,6 +86,9 @@ const SYM_FLIP_TOPR_DIAGONAL: [u8; 64] = [
 	56, 48, 40, 32, 24, 16,  8,  0
 ];
 
+/// Given a transform and a board location (like a move index)
+/// Applies the inverse of the transformation and returns the
+/// index of that location before the transformation was applied
 pub fn sym_invert_loc(transform: &[u8; 64], pos: u8) -> u8 {
 	
 	// scan transform and return where i == pos
@@ -99,6 +102,10 @@ pub fn sym_invert_loc(transform: &[u8; 64], pos: u8) -> u8 {
 	
 }
 
+/// Find the minimum symmetry of a board
+/// Each board position has 8 symmetries, this will find the minimum one
+/// Returns the min board and the transform used to get the min board
+/// Returns (me, enemy, transform)
 pub fn sym_min_board(me: u64, enemy: u64) -> (u64, u64, &'static [u8; 64]) {
 	
 	// all the symmetries that can be applied
@@ -135,12 +142,14 @@ pub fn sym_min_board(me: u64, enemy: u64) -> (u64, u64, &'static [u8; 64]) {
 	
 }
 
+/// Applies a transform to me and enemy
 fn sym_apply_to(transform: &[u8; 64], m: u64, e: u64) -> (u64, u64) {
 	
 	(sym_apply_to_bb(transform, m), sym_apply_to_bb(transform, e))
 	
 }
 
+/// Applies a transform to a single bitboard
 fn sym_apply_to_bb(transform: &[u8; 64], bb: u64) -> u64 {
 	
 	let mut new_board = 0u64;

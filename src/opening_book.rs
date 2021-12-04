@@ -38,6 +38,7 @@ pub fn search_book(book: &OthelloBook, me: u64, enemy: u64) -> Option<(u8, i16)>
 	
 }
 
+/// Read the opening book from a file
 pub fn read_book(file_name: &str) -> OthelloBook {
 	
 	let mut book: OthelloBook = HashMap::new();

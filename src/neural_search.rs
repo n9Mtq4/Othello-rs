@@ -2,6 +2,9 @@ use tch::CModule;
 use crate::neural_heuristic::{nnpredict_batch, nnpredict_d1};
 use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
 
+/// Perform a mid-game evaluation on a node
+/// Call with alpha=-640000, beta=640000
+/// Returns (move, centidisk eval from current player's POV)
 pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8) -> (u8, i32) {
 	
 	// if the game is over, evaluate who won
@@ -32,8 +35,10 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 		})
 		.collect();
 	
+	// run a prediction on every state
 	let keys: Vec<f32> = nnpredict_batch(model, &states.iter().map(|(_, m, e)| (*m, *e)).collect());
 	
+	// map the predictions to the states (applied move, me, enemy, q)
 	let mut states: Vec<(u8, u64, u64, i32)> = states.
 		iter()
 		.zip(keys.iter())
@@ -70,6 +75,9 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 	
 }
 
+/// Get the mid-game evaluation of a board without move ordering
+/// Call with alpha=-640000, beta=640000
+/// returns centidisk eval from current player's POV
 fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8) -> i32 {
 	
 	// if the game is over, evaluate who won
@@ -123,7 +131,10 @@ fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32
 	
 }
 
-
+/// Get the mid-game evaluation of a board with move ordering
+/// Call with alpha=-640000, beta=640000
+/// Optimal stop_mo_at_depth=3
+/// returns centidisk eval from current player's POV
 fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, stop_mo_at_depth: i8) -> i32 {
 	
 	// if the game is over, evaluate who won

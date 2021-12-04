@@ -236,6 +236,7 @@ fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_emp
 	// for each child state
 	for (me, enemy) in states {
 		
+		// stop ordering the moves if the empty disks is smaller than the cutoff
 		let q = if empty_disks > stop_mo_at_empties {
 			-solve_endgame_mo(enemy, me, -beta, -alpha, stop_mo_at_empties)
 		} else {
