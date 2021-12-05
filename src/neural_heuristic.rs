@@ -31,11 +31,21 @@ pub fn nnpredict_batch(model: &CModule, v: &Vec<(u64, u64)>) -> Vec<f32> {
 		.collect();
 	
 	// stack all board tensors into 1 batch
-	let t = Tensor::stack(&states, 0).to(Device::Cuda(0));
+	let t = if cfg!(feature = "gpu") {
+		Tensor::stack(&states, 0).to(Device::Cuda(0))
+	} else {
+		Tensor::stack(&states, 0)
+	};
 	
-	let output: Tensor = model.forward_ts(&[t])
-		.expect("model prediction failed")
-		.to(Device::Cpu);
+	// run through model
+	let output: Tensor = if cfg!(feature = "gpu") {
+		model.forward_ts(&[t])
+			.expect("model prediction failed")
+			.to(Device::Cpu)
+	} else {
+		model.forward_ts(&[t])
+			.expect("model prediction failed")
+	};
 	
 	Vec::from(output)
 	
@@ -49,14 +59,25 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	
 	// negamax to collect batch
 	board_children_to_flat_tensor(&mut tensors, me, enemy, depth);
-	// perform a single batch on all tensors
 	
 	// let result_vec = nnpredict_batch(model, &states);
 	
-	let t = Tensor::stack(&tensors, 0).to(Device::Cuda(0));
-	let output: Tensor = model.forward_ts(&[t])
-		.expect("model prediction failed")
-		.to(Device::Cuda(0));
+	// stack all states in to 1 batch
+	let t = if cfg!(feature = "gpu") {
+		Tensor::stack(&tensors, 0).to(Device::Cuda(0))
+	} else {
+		Tensor::stack(&tensors, 0)
+	};
+	
+	// run through model
+	let output: Tensor = if cfg!(feature = "gpu") {
+		model.forward_ts(&[t])
+			.expect("model prediction failed")
+			.to(Device::Cuda(0))
+	} else {
+		model.forward_ts(&[t])
+			.expect("model prediction failed")
+	};
 	
 	let result_vec: Vec<f32> = Vec::from(output);
 	
@@ -171,21 +192,22 @@ pub fn nnpredict_d1(model: &CModule, me: u64, enemy: u64) -> i32 {
 		.collect();
 	
 	// move all tensors into 1 batch
-	let t = Tensor::stack(&states, 0).to(Device::Cuda(0));
+	let t = if cfg!(feature = "gpu") {
+		Tensor::stack(&states, 0).to(Device::Cuda(0))
+	} else {
+		Tensor::stack(&states, 0)
+	};
 	
 	// perform prediction on batch & do 1 level of negamax
 	let output: Tensor = model.forward_ts(&[t])
 		.expect("model prediction failed");
-	let best_child: Tensor = output.min().to(Device::Cpu);
+	
+	let best_child: Tensor = if cfg!(feature = "gpu") {
+		output.min().to(Device::Cpu)
+	} else {
+		output.min()
+	};
 	
 	(-100.0 * 64.0 * f32::from(best_child)) as i32
-	
-}
-
-/// Predict on a single state
-fn nnpredict_d0(model: &CModule, me: u64, enemy: u64) -> i32 {
-	
-	let output: Tensor = model.forward_ts(&[board_to_tensor(me, enemy)]).expect("model prediction failed");
-	(100.0 * 64.0 * f32::from(output)) as i32
 	
 }

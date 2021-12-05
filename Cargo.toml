@@ -9,6 +9,11 @@ edition = "2021"
 tch = "0.6.1"
 byteorder = "1.4.3"
 
+[features]
+default = []
+large_batch = []
+gpu = ["large_batch"]
+
 [profile.release]
 opt-level = 3
 lto = "fat"

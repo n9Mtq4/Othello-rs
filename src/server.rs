@@ -1,3 +1,5 @@
+#[allow(unused_imports)]
+
 use std::fmt::{Display, Formatter};
 use std::thread;
 use std::net::{TcpListener, TcpStream, Shutdown};
@@ -168,6 +170,7 @@ fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStre
 	
 }
 
+#[allow(unused_mut)]
 pub fn server_start(port: u16) {
 	
 	println!("Starting server...");
@@ -180,7 +183,12 @@ pub fn server_start(port: u16) {
 	// load pytorch model
 	let mut model = tch::CModule::load("data/model.pt")
 		.unwrap();
-	model.to(Device::Cuda(0), Kind::Float, false);
+	
+	// move to the GPU
+	#[cfg(feature = "gpu")] {
+		println!("Moving model to GPU");
+		model.to(Device::Cuda(0), Kind::Float, false);
+	}
 	
 	let model = Arc::new(Mutex::new(model));
 	

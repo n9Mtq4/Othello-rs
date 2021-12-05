@@ -5,6 +5,15 @@ use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_
 const BEST_STOP_MO_AT_DEPTH: i8 = 1;
 const BEST_BATCH_DEPTH: i8 = 3;
 
+#[inline(always)]
+fn nnsearch_heuristic(model: &CModule, me: u64, enemy: u64) -> i32 {
+	if cfg!(feature = "large_batch") {
+		nnpredict_dn(model, me, enemy, BEST_BATCH_DEPTH)
+	} else {
+		nnpredict_d1(model, me, enemy)
+	}
+}
+
 /// Perform a mid-game evaluation on a node
 /// Call with alpha=-640000, beta=640000
 /// Returns (move, centidisk eval from current player's POV)
@@ -17,7 +26,7 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 	
 	// if the depth is 0, evaluate the position with the nn
 	if depth <= 0 {
-		return (65, nnpredict_dn(model, me, enemy, BEST_BATCH_DEPTH));
+		return (65, nnsearch_heuristic(model, me, enemy));
 	}
 	
 	// get possible moves
@@ -90,7 +99,7 @@ fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32
 	
 	// if the depth is 0, evaluate the position with the nn
 	if depth <= 0 {
-		return nnpredict_dn(model, me, enemy, BEST_BATCH_DEPTH);
+		return nnsearch_heuristic(model, me, enemy);
 	}
 	
 	// get possible moves
@@ -147,7 +156,7 @@ fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, 
 	
 	// if the depth is 0, evaluate the position with the nn
 	if depth <= 0 {
-		return nnpredict_dn(model, me, enemy, BEST_BATCH_DEPTH);
+		return nnsearch_heuristic(model, me, enemy);
 	}
 	
 	// get possible moves
