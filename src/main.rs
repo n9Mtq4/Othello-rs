@@ -12,6 +12,14 @@ use crate::server::server_start;
 
 fn main() {
 	
+	// print out compiled features
+	#[cfg(feature = "gpu")] {
+		println!("Feature \"gpu\" enabled");
+	}
+	#[cfg(feature = "large_batch")] {
+		println!("Feature \"large_batch\" enabled");
+	}
+	
 	let mut port = 35326u16;
 	
 	// try to set port from CLI args
@@ -23,6 +31,7 @@ fn main() {
 			.expect("provided argument isn't a valid port number");
 	}
 	
+	// start the server
 	server_start(port);
 	
 }

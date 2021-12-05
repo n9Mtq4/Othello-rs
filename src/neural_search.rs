@@ -2,13 +2,17 @@ use tch::CModule;
 use crate::neural_heuristic::{nnpredict_batch, nnpredict_d1, nnpredict_dn};
 use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
 
-const BEST_STOP_MO_AT_DEPTH: i8 = 1;
-const BEST_BATCH_DEPTH: i8 = 3;
+const BEST_STOP_MO_AT_DEPTH: i8 = if cfg!(feature = "large_batch") {
+	2 // optimal mo cutoff is 2 for large batch
+} else {
+	2 // optimal mo cutoff is 2 for cpu
+};
 
 #[inline(always)]
 fn nnsearch_heuristic(model: &CModule, me: u64, enemy: u64) -> i32 {
 	if cfg!(feature = "large_batch") {
-		nnpredict_dn(model, me, enemy, BEST_BATCH_DEPTH)
+		// optimal batch depth is 3
+		nnpredict_dn(model, me, enemy, 3)
 	} else {
 		nnpredict_d1(model, me, enemy)
 	}
