@@ -1,4 +1,4 @@
-#[allow(unused_imports)]
+#![allow(unused_imports)]
 
 use std::fmt::{Display, Formatter};
 use std::thread;
@@ -174,6 +174,12 @@ fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStre
 pub fn server_start(port: u16) {
 	
 	println!("Starting server...");
+	#[cfg(feature = "gpu")] {
+		println!("Feature \"gpu\" enabled");
+	}
+	#[cfg(feature = "large_batch")] {
+		println!("Feature \"large_batch\" enabled");
+	}
 	
 	// load opening book
 	// TODO: since we only read from the book, a lock isn't needed, although may be good to add RwLock anyway
