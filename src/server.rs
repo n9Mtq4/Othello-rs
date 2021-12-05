@@ -192,7 +192,7 @@ pub fn server_start(port: u16) {
 	
 	// move to the GPU
 	#[cfg(feature = "gpu")] {
-		println!("Moving model to GPU");
+		println!("Moving model to GPU...");
 		model.to(Device::Cuda(0), Kind::Float, false);
 	}
 	
