@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 
+use std::cmp::max;
 use std::fmt::{Display, Formatter};
 use std::thread;
 use std::net::{TcpListener, TcpStream, Shutdown};
@@ -52,7 +53,7 @@ impl SearchParams {
 		
 		// ensure not too deep
 		end_depth = end_depth.clamp(1, 20);
-		mid_depth = mid_depth.clamp(1, 6);
+		mid_depth = mid_depth.clamp(1, 10);
 		
 		SearchParams {
 			adj_time,
@@ -62,6 +63,16 @@ impl SearchParams {
 			end_depth
 		}
 		
+	}
+	
+	/// Gets the adjusted depth to pass to midgame search
+	/// for a true depth of mid_depth
+	fn adjusted_mid_depth(&self) -> u8 {
+		if cfg!(feature = "large_batch") {
+			max(1, self.mid_depth - 3)
+		} else {
+			max(1, self.mid_depth - 1)
+		}
 	}
 	
 	/// Gets the window size for the endgame alphabeta search
@@ -100,7 +111,7 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 	}
 	
 	// otherwise perform a negamax neural network search
-	let (mov, q) = nnsearch_root(model, me, enemy, -640000, 640000, params.mid_depth as i8);
+	let (mov, q) = nnsearch_root(model, me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
 	(mov, q as i16)
 	
 }
