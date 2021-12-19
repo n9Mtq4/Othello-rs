@@ -32,43 +32,43 @@ fn flip_diag_a1h8(mut x: u64) -> u64 {
 /// Returns from POV of `me` and is for use in a negamax framework.
 fn heuristic_eg_nega(me: u64, enemy: u64) -> i32 {
 	
-	let m00 = (me >> 0*8) & 0b11111111u64;
-	let m10 = (me >> 1*8) & 0b11111111u64;
-	let m20 = (me >> 2*8) & 0b11111111u64;
-	let m30 = (me >> 3*8) & 0b11111111u64;
-	let m31 = (me >> 4*8) & 0b11111111u64;
-	let m21 = (me >> 5*8) & 0b11111111u64;
-	let m11 = (me >> 6*8) & 0b11111111u64;
-	let m01 = (me >> 7*8) & 0b11111111u64;
+	let m00 = (me >> 0 * 8) & 0b11111111u64;
+	let m10 = (me >> 1 * 8) & 0b11111111u64;
+	let m20 = (me >> 2 * 8) & 0b11111111u64;
+	let m30 = (me >> 3 * 8) & 0b11111111u64;
+	let m31 = (me >> 4 * 8) & 0b11111111u64;
+	let m21 = (me >> 5 * 8) & 0b11111111u64;
+	let m11 = (me >> 6 * 8) & 0b11111111u64;
+	let m01 = (me >> 7 * 8) & 0b11111111u64;
 	
-	let e00 = (enemy >> 0*8) & 0b11111111u64;
-	let e10 = (enemy >> 1*8) & 0b11111111u64;
-	let e20 = (enemy >> 2*8) & 0b11111111u64;
-	let e30 = (enemy >> 3*8) & 0b11111111u64;
-	let e31 = (enemy >> 4*8) & 0b11111111u64;
-	let e21 = (enemy >> 5*8) & 0b11111111u64;
-	let e11 = (enemy >> 6*8) & 0b11111111u64;
-	let e01 = (enemy >> 7*8) & 0b11111111u64;
+	let e00 = (enemy >> 0 * 8) & 0b11111111u64;
+	let e10 = (enemy >> 1 * 8) & 0b11111111u64;
+	let e20 = (enemy >> 2 * 8) & 0b11111111u64;
+	let e30 = (enemy >> 3 * 8) & 0b11111111u64;
+	let e31 = (enemy >> 4 * 8) & 0b11111111u64;
+	let e21 = (enemy >> 5 * 8) & 0b11111111u64;
+	let e11 = (enemy >> 6 * 8) & 0b11111111u64;
+	let e01 = (enemy >> 7 * 8) & 0b11111111u64;
 	
 	let me_flip = flip_diag_a1h8(me);
-	let mf00 = (me_flip >> 0*8) & 0b11111111u64;
-	let mf10 = (me_flip >> 1*8) & 0b11111111u64;
-	let mf20 = (me_flip >> 2*8) & 0b11111111u64;
-	let mf30 = (me_flip >> 3*8) & 0b11111111u64;
-	let mf31 = (me_flip >> 4*8) & 0b11111111u64;
-	let mf21 = (me_flip >> 5*8) & 0b11111111u64;
-	let mf11 = (me_flip >> 6*8) & 0b11111111u64;
-	let mf01 = (me_flip >> 7*8) & 0b11111111u64;
+	let mf00 = (me_flip >> 0 * 8) & 0b11111111u64;
+	let mf10 = (me_flip >> 1 * 8) & 0b11111111u64;
+	let mf20 = (me_flip >> 2 * 8) & 0b11111111u64;
+	let mf30 = (me_flip >> 3 * 8) & 0b11111111u64;
+	let mf31 = (me_flip >> 4 * 8) & 0b11111111u64;
+	let mf21 = (me_flip >> 5 * 8) & 0b11111111u64;
+	let mf11 = (me_flip >> 6 * 8) & 0b11111111u64;
+	let mf01 = (me_flip >> 7 * 8) & 0b11111111u64;
 	
 	let enemy_flip = flip_diag_a1h8(enemy);
-	let ef00 = (enemy_flip >> 0*8) & 0b11111111u64;
-	let ef10 = (enemy_flip >> 1*8) & 0b11111111u64;
-	let ef20 = (enemy_flip >> 2*8) & 0b11111111u64;
-	let ef30 = (enemy_flip >> 3*8) & 0b11111111u64;
-	let ef31 = (enemy_flip >> 4*8) & 0b11111111u64;
-	let ef21 = (enemy_flip >> 5*8) & 0b11111111u64;
-	let ef11 = (enemy_flip >> 6*8) & 0b11111111u64;
-	let ef01 = (enemy_flip >> 7*8) & 0b11111111u64;
+	let ef00 = (enemy_flip >> 0 * 8) & 0b11111111u64;
+	let ef10 = (enemy_flip >> 1 * 8) & 0b11111111u64;
+	let ef20 = (enemy_flip >> 2 * 8) & 0b11111111u64;
+	let ef30 = (enemy_flip >> 3 * 8) & 0b11111111u64;
+	let ef31 = (enemy_flip >> 4 * 8) & 0b11111111u64;
+	let ef21 = (enemy_flip >> 5 * 8) & 0b11111111u64;
+	let ef11 = (enemy_flip >> 6 * 8) & 0b11111111u64;
+	let ef01 = (enemy_flip >> 7 * 8) & 0b11111111u64;
 	
 	let me_score = EG_WEIGHTS[0][m00 as usize] + EG_WEIGHTS[0][m01 as usize] +
 		EG_WEIGHTS[1][m10 as usize] + EG_WEIGHTS[1][m11 as usize] +

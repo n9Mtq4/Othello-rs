@@ -7,6 +7,8 @@ mod neural_search;
 mod server;
 mod opening_book;
 mod othello_symmetry;
+mod classic_weights;
+mod classic_search;
 
 use crate::server::server_start;
 

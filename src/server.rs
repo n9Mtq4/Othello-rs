@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use byteorder::{NetworkEndian, WriteBytesExt};
 use tch::{CModule, Device, Kind};
+use crate::classic_search::classic_search_root;
 use crate::neural_search::nnsearch_root;
 use crate::othello_board::{empty_disks, generate_moves};
 use crate::endgame::solve_endgame_root;
@@ -52,8 +53,8 @@ impl SearchParams {
 		let adj_time = ((p >> 14) & 0b1) != 0;
 		
 		// ensure not too deep
-		end_depth = end_depth.clamp(1, 20);
-		mid_depth = mid_depth.clamp(1, 10);
+		// end_depth = end_depth.clamp(1, 20);
+		// mid_depth = mid_depth.clamp(1, 10);
 		
 		SearchParams {
 			adj_time,
@@ -112,6 +113,8 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 	
 	// otherwise perform a negamax neural network search
 	let (mov, q) = nnsearch_root(model, me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
+	// let (mov, q) = classic_search_root(me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
+	
 	(mov, q as i16)
 	
 }
