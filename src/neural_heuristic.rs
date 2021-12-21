@@ -60,7 +60,12 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	// negamax to collect batch
 	board_children_to_flat_tensor(&mut tensors, me, enemy, depth);
 	
-	// let result_vec = nnpredict_batch(model, &states);
+	// if there are no moves 3 plys down (even with moves for us), tensors is empty.
+	// If this is the case, stacking will fail. If this is the case, rerun with a lesser depth
+	// Ex: depth=3, fails on (me=18446744043523145728, enemy=3948544) without this check
+	if tensors.is_empty() {
+		return nnpredict_dn(model, me, enemy, depth - 1);
+	}
 	
 	// stack all states in to 1 batch
 	let t = if cfg!(feature = "gpu") {
