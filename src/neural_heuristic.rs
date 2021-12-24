@@ -51,6 +51,8 @@ pub fn nnpredict_batch(model: &CModule, v: &Vec<(u64, u64)>) -> Vec<f32> {
 	
 }
 
+/// Performs a prediction on a state. Performs minimax down to depth of `depth`.
+/// All states in the minimax tree are batched and evaluated together.
 pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	
 	// TODO: determine optimal capacity
@@ -87,17 +89,18 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	let result_vec: Vec<f32> = Vec::from(output);
 	
 	// negamax to evaluate using result from batch
-	(100.0 * 64.0 * negamax_tensor(&result_vec, me, enemy, depth, &mut 0)) as i32
+	(100.0 * 64.0 * negamax_vec(&result_vec, me, enemy, depth, &mut 0)) as i32
 	
 }
 
-fn negamax_tensor(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize) -> f32 {
+/// Perform negamax on a state, using evaluations stored in a vector `v`.
+fn negamax_vec(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize) -> f32 {
 	
 	if game_over(me, enemy) {
 		return evaluation(me, enemy) as f32;
 	}
 	
-	// if the depth is 0, push the tensor to the vector
+	// if the depth is 0, uses the evaluation stored in the vector
 	if depth <= 0 {
 		(*vec_idx) += 1;
 		return v[(*vec_idx) - 1];
@@ -108,7 +111,7 @@ fn negamax_tensor(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut us
 	
 	// if no moves, pass
 	if moves == 0 {
-		return negamax_tensor(v, enemy, me, depth - 1, vec_idx);
+		return negamax_vec(v, enemy, me, depth - 1, vec_idx);
 	}
 	
 	let num_moves: usize = moves.count_ones() as usize;
@@ -122,7 +125,7 @@ fn negamax_tensor(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut us
 			
 			// evaluate the child state
 			let (me, enemy) = make_move(1u64 << i, me, enemy);
-			let q = -negamax_tensor(v, enemy, me, depth - 1, vec_idx);
+			let q = -negamax_vec(v, enemy, me, depth - 1, vec_idx);
 			
 			if q > best_score {
 				best_score = q;
@@ -137,6 +140,7 @@ fn negamax_tensor(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut us
 	
 }
 
+/// put all children board tensors to a depth of `depth` into a flat vector.
 fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth: i8) {
 	
 	// if the game is over, evaluate who won
@@ -165,6 +169,7 @@ fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth
 	while move_idx < num_moves {
 		if ((moves >> i) & 1) == 1 {
 			
+			// put the children states into the vector
 			let (m, e) = make_move(1u64 << i, me, enemy);
 			board_children_to_flat_tensor(v, e, m, depth - 1);
 			
@@ -175,7 +180,7 @@ fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth
 	
 }
 
-/// Perform a predicton on an othello board
+/// Perform a prediction on an othello board
 /// Goes down 1 depth and runs the prediction on all children in 1 batch
 pub fn nnpredict_d1(model: &CModule, me: u64, enemy: u64) -> i32 {
 	

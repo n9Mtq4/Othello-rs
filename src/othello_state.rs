@@ -2,21 +2,19 @@
 
 use std::fmt::{Display, Formatter};
 use crate::othello_board::{game_over, generate_moves, make_move, to_idx_move_vec};
-use crate::othello_hash::KEYS;
 
 pub struct OthelloState {
 	
 	ply: u8,
 	black: u64,
 	white: u64,
-	hash: u32
 	
 }
 
 impl OthelloState {
 	
-	pub fn new(ply: u8, black: u64, white: u64, hash: u32) -> Self {
-		OthelloState { ply, black, white, hash }
+	pub fn new(ply: u8, black: u64, white: u64) -> Self {
+		OthelloState { ply, black, white }
 	}
 	
 	pub fn starting_state() -> Self {
@@ -24,7 +22,6 @@ impl OthelloState {
 			ply: 0,
 			black: 0b00000000_00000000_00000000_00001000_00010000_00000000_00000000_00000000u64,
 			white: 0b00000000_00000000_00000000_00010000_00001000_00000000_00000000_00000000u64,
-			hash: 0
 		}
 	}
 	
@@ -71,16 +68,16 @@ impl OthelloState {
 	}
 	
 	pub fn pass(&self) -> Self {
-		Self::new(self.ply + 1, self.black, self.white, self.hash ^ KEYS[self.ply as usize][64])
+		Self::new(self.ply + 1, self.black, self.white)
 	}
 	
 	pub fn apply_move(&self, mov: u8) -> Self {
 		if self.ply & 1 == 0 {
 			let (me, enemy) = make_move(1u64 << mov, self.black, self.white);
-			Self::new(self.ply + 1, me, enemy, self.hash ^ KEYS[self.ply as usize][mov as usize])
+			Self::new(self.ply + 1, me, enemy)
 		} else {
 			let (me, enemy) = make_move(1u64 << mov, self.white, self.black);
-			Self::new(self.ply + 1, enemy, me, self.hash ^ KEYS[self.ply as usize][mov as usize])
+			Self::new(self.ply + 1, enemy, me)
 		}
 	}
 	
@@ -93,7 +90,7 @@ impl OthelloState {
 	}
 	
 	pub fn to_short_string(&self) -> String {
-		format!("{},{},{},{}", self.ply, self.black, self.white, self.hash)
+		format!("{},{},{}", self.ply, self.black, self.white)
 	}
 	
 	pub fn ply(&self) -> u8 {
@@ -108,10 +105,6 @@ impl OthelloState {
 		self.white
 	}
 	
-	pub fn hash(&self) -> u32 {
-		self.hash
-	}
-	
 }
 
 impl Display for OthelloState {
@@ -122,7 +115,7 @@ impl Display for OthelloState {
 			else if self.white & (1u64 << i) != 0 { write!(f, "@ ")?; }
 			else { write!(f, "  ")?; }
 		}
-		write!(f, "\nply={}, black={}, white={}, hash={}", self.ply, self.black, self.white, self.hash)
+		write!(f, "\nply={}, black={}, white={}", self.ply, self.black, self.white)
 	}
 }
 

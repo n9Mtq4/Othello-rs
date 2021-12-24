@@ -2,18 +2,21 @@ use tch::CModule;
 use crate::neural_heuristic::{nnpredict_batch, nnpredict_d1, nnpredict_dn};
 use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
 
+/// optimal depth until the bottom of the tree to stop move ordering
 const BEST_STOP_MO_AT_DEPTH: i8 = if cfg!(feature = "large_batch") {
 	2 // optimal mo cutoff is 2 for large batch
 } else {
 	2 // optimal mo cutoff is 2 for cpu
 };
 
+/// Use neural network to evaluate a state
 #[inline(always)]
 fn nnsearch_heuristic(model: &CModule, me: u64, enemy: u64) -> i32 {
 	if cfg!(feature = "large_batch") {
-		// optimal batch depth is 3
+		// optimal batch depth is 3 for a GPU
 		nnpredict_dn(model, me, enemy, 3)
 	} else {
+		// optimal batch depth is 1 for CPU
 		nnpredict_d1(model, me, enemy)
 	}
 }

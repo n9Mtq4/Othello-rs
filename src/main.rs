@@ -1,6 +1,5 @@
 mod othello_board;
 mod othello_state;
-mod othello_hash;
 mod endgame;
 mod neural_heuristic;
 mod neural_search;
