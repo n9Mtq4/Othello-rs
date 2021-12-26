@@ -88,6 +88,11 @@ fn flip_diag_a1h8(mut x: u64) -> u64 {
 /// Returns from POV of `me` and is for use in a negamax framework.
 fn heuristic_eg_nega(me: u64, enemy: u64) -> i32 {
 	
+	// TODO: use more applicable regions and use asm pext instruction to index into weights after CPU upgrade
+	// https://docs.rs/bitintr/0.3.0/x86_64-pc-windows-msvc/bitintr/trait.Pext.html#tymethod.pext
+	// Zen2 arch takes 250 cycles for pext. Zen3 takes 1 cycle
+	// https://www.anandtech.com/show/16214/amd-zen-3-ryzen-deep-dive-review-5950x-5900x-5800x-and-5700x-tested/6
+	
 	let m00 = (me >> 0 * 8) & 0b11111111u64;
 	let m10 = (me >> 1 * 8) & 0b11111111u64;
 	let m20 = (me >> 2 * 8) & 0b11111111u64;
