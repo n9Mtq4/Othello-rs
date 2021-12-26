@@ -50,67 +50,51 @@ pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	let mut captured: u64;
 	
 	captured = shift_n(bb_self) & bb_enemy;
-	captured |= shift_n(captured) & bb_enemy;
-	captured |= shift_n(captured) & bb_enemy;
-	captured |= shift_n(captured) & bb_enemy;
-	captured |= shift_n(captured) & bb_enemy;
-	captured |= shift_n(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_n(captured) & bb_enemy;
+	}
 	moves |= shift_n(captured) & open;
 	
 	captured = shift_s(bb_self) & bb_enemy;
-	captured |= shift_s(captured) & bb_enemy;
-	captured |= shift_s(captured) & bb_enemy;
-	captured |= shift_s(captured) & bb_enemy;
-	captured |= shift_s(captured) & bb_enemy;
-	captured |= shift_s(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_s(captured) & bb_enemy;
+	}
 	moves |= shift_s(captured) & open;
 	
 	captured = shift_w(bb_self) & bb_enemy;
-	captured |= shift_w(captured) & bb_enemy;
-	captured |= shift_w(captured) & bb_enemy;
-	captured |= shift_w(captured) & bb_enemy;
-	captured |= shift_w(captured) & bb_enemy;
-	captured |= shift_w(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_w(captured) & bb_enemy;
+	}
 	moves |= shift_w(captured) & open;
 	
 	captured = shift_e(bb_self) & bb_enemy;
-	captured |= shift_e(captured) & bb_enemy;
-	captured |= shift_e(captured) & bb_enemy;
-	captured |= shift_e(captured) & bb_enemy;
-	captured |= shift_e(captured) & bb_enemy;
-	captured |= shift_e(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_e(captured) & bb_enemy;
+	}
 	moves |= shift_e(captured) & open;
 	
 	captured = shift_nw(bb_self) & bb_enemy;
-	captured |= shift_nw(captured) & bb_enemy;
-	captured |= shift_nw(captured) & bb_enemy;
-	captured |= shift_nw(captured) & bb_enemy;
-	captured |= shift_nw(captured) & bb_enemy;
-	captured |= shift_nw(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_nw(captured) & bb_enemy;
+	}
 	moves |= shift_nw(captured) & open;
 	
 	captured = shift_ne(bb_self) & bb_enemy;
-	captured |= shift_ne(captured) & bb_enemy;
-	captured |= shift_ne(captured) & bb_enemy;
-	captured |= shift_ne(captured) & bb_enemy;
-	captured |= shift_ne(captured) & bb_enemy;
-	captured |= shift_ne(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_ne(captured) & bb_enemy;
+	}
 	moves |= shift_ne(captured) & open;
 	
 	captured = shift_sw(bb_self) & bb_enemy;
-	captured |= shift_sw(captured) & bb_enemy;
-	captured |= shift_sw(captured) & bb_enemy;
-	captured |= shift_sw(captured) & bb_enemy;
-	captured |= shift_sw(captured) & bb_enemy;
-	captured |= shift_sw(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_sw(captured) & bb_enemy;
+	}
 	moves |= shift_sw(captured) & open;
 	
 	captured = shift_se(bb_self) & bb_enemy;
-	captured |= shift_se(captured) & bb_enemy;
-	captured |= shift_se(captured) & bb_enemy;
-	captured |= shift_se(captured) & bb_enemy;
-	captured |= shift_se(captured) & bb_enemy;
-	captured |= shift_se(captured) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_se(captured) & bb_enemy;
+	}
 	moves |= shift_se(captured) & open;
 	
 	return moves;
@@ -134,88 +118,74 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	*bb_self |= mov;
 	
 	captured = shift_n(mov) & *bb_enemy;
-	captured |= shift_n(captured) & *bb_enemy;
-	captured |= shift_n(captured) & *bb_enemy;
-	captured |= shift_n(captured) & *bb_enemy;
-	captured |= shift_n(captured) & *bb_enemy;
-	captured |= shift_n(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_n(captured) & *bb_enemy;
+	}
 	if shift_n(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
 	}
 	
 	captured = shift_s(mov) & *bb_enemy;
-	captured |= shift_s(captured) & *bb_enemy;
-	captured |= shift_s(captured) & *bb_enemy;
-	captured |= shift_s(captured) & *bb_enemy;
-	captured |= shift_s(captured) & *bb_enemy;
-	captured |= shift_s(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_s(captured) & *bb_enemy;
+	}
 	if shift_s(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
 	}
 	
 	captured = shift_w(mov) & *bb_enemy;
-	captured |= shift_w(captured) & *bb_enemy;
-	captured |= shift_w(captured) & *bb_enemy;
-	captured |= shift_w(captured) & *bb_enemy;
-	captured |= shift_w(captured) & *bb_enemy;
-	captured |= shift_w(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_w(captured) & *bb_enemy;
+	}
 	if shift_w(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
 	}
 	
 	captured = shift_e(mov) & *bb_enemy;
-	captured |= shift_e(captured) & *bb_enemy;
-	captured |= shift_e(captured) & *bb_enemy;
-	captured |= shift_e(captured) & *bb_enemy;
-	captured |= shift_e(captured) & *bb_enemy;
-	captured |= shift_e(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_e(captured) & *bb_enemy;
+	}
 	if shift_e(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
 	}
 	
 	captured = shift_nw(mov) & *bb_enemy;
-	captured |= shift_nw(captured) & *bb_enemy;
-	captured |= shift_nw(captured) & *bb_enemy;
-	captured |= shift_nw(captured) & *bb_enemy;
-	captured |= shift_nw(captured) & *bb_enemy;
-	captured |= shift_nw(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_nw(captured) & *bb_enemy;
+	}
 	if shift_nw(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
 	}
 	
 	captured = shift_ne(mov) & *bb_enemy;
-	captured |= shift_ne(captured) & *bb_enemy;
-	captured |= shift_ne(captured) & *bb_enemy;
-	captured |= shift_ne(captured) & *bb_enemy;
-	captured |= shift_ne(captured) & *bb_enemy;
-	captured |= shift_ne(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_ne(captured) & *bb_enemy;
+	}
 	if shift_ne(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
 	}
 	
 	captured = shift_sw(mov) & *bb_enemy;
-	captured |= shift_sw(captured) & *bb_enemy;
-	captured |= shift_sw(captured) & *bb_enemy;
-	captured |= shift_sw(captured) & *bb_enemy;
-	captured |= shift_sw(captured) & *bb_enemy;
-	captured |= shift_sw(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_sw(captured) & *bb_enemy;
+		
+	}
 	if shift_sw(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
 	}
 	
 	captured = shift_se(mov) & *bb_enemy;
-	captured |= shift_se(captured) & *bb_enemy;
-	captured |= shift_se(captured) & *bb_enemy;
-	captured |= shift_se(captured) & *bb_enemy;
-	captured |= shift_se(captured) & *bb_enemy;
-	captured |= shift_se(captured) & *bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_se(captured) & *bb_enemy;
+		
+	}
 	if shift_se(captured) & *bb_self != 0 {
 		*bb_self |= captured;
 		*bb_enemy &= !captured;
