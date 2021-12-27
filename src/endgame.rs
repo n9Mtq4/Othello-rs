@@ -192,6 +192,8 @@ fn heuristic_eg_nega_d1(me: u64, enemy: u64) -> i32 {
 /// Returns (move, eval)
 pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, i8) {
 	
+	const OPTIMAL_STOP_MO_AT_EMPTIES: u8 = 8;
+	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
 		return (65, evaluation(me, enemy));
@@ -202,7 +204,7 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 	
 	// if no moves, pass
 	if moves == 0 {
-		return (65, -solve_endgame_mo(enemy, me, -beta, -alpha, 7));
+		return (65, -solve_endgame_mo(enemy, me, -beta, -alpha, OPTIMAL_STOP_MO_AT_EMPTIES));
 	}
 	
 	// apply each move and get the state
@@ -222,7 +224,7 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 	// for each child state
 	for (mov, me, enemy) in states {
 		
-		let q = -solve_endgame_mo(enemy, me, -beta, -alpha, 7);
+		let q = -solve_endgame_mo(enemy, me, -beta, -alpha, OPTIMAL_STOP_MO_AT_EMPTIES);
 		
 		if q >= beta {
 			return (mov as u8, q);
@@ -236,6 +238,110 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 	}
 	
 	return (best_move, alpha);
+	
+}
+
+/// Fail-hard negamax for endgame solving
+/// Uses move ordering for states with more than stop_mo_at_empties number of empty disks
+/// Optimal stop_mo_at_empties=7
+/// https://www.chessprogramming.org/Alpha-Beta
+fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_empties: u8) -> i8 {
+	
+	// TODO: This is slower than java. why?
+	
+	// if the game is over, evaluate who won
+	if game_over(me, enemy) {
+		return evaluation(me, enemy);
+	}
+	
+	// get possible moves
+	let moves = generate_moves(me, enemy);
+	
+	// if no moves, pass
+	if moves == 0 {
+		return -solve_endgame_mo(enemy, me, -beta, -alpha, stop_mo_at_empties);
+	}
+	
+	// apply each move and get the state
+	let mut states: Vec<(u64, u64)> = to_idx_move_vec(moves)
+		.iter()
+		.map(|mov| make_move(1u64 << *mov, me, enemy))
+		.collect();
+	
+	// sort the child states, best one first
+	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
+	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
+	
+	let empty_disks = empty_disks(me, enemy);
+	
+	// for each child state
+	for (me, enemy) in states {
+		
+		// stop ordering the moves if the empty disks is smaller than the cutoff
+		let q = if empty_disks > stop_mo_at_empties {
+			-solve_endgame_mo(enemy, me, -beta, -alpha, stop_mo_at_empties)
+		} else {
+			-solve_endgame_weakmo(enemy, me, -beta, -alpha)
+		};
+		
+		if q >= beta {
+			return q;
+		}
+		
+		if q > alpha {
+			alpha = q;
+		}
+		
+	}
+	
+	return alpha;
+	
+}
+
+/// Fail-hard negamax for endgame solving
+/// Uses a faster, but weaker, move ordering only once
+/// https://www.chessprogramming.org/Alpha-Beta
+fn solve_endgame_weakmo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
+	
+	// if the game is over, evaluate who won
+	if game_over(me, enemy) {
+		return evaluation(me, enemy);
+	}
+	
+	// get possible moves
+	let moves = generate_moves(me, enemy);
+	
+	// if no moves, pass
+	if moves == 0 {
+		return -solve_endgame_nomo(enemy, me, -beta, -alpha);
+	}
+	
+	// apply each move and get the state
+	let mut states: Vec<(u64, u64)> = to_idx_move_vec(moves)
+		.iter()
+		.map(|mov| make_move(1u64 << *mov, me, enemy))
+		.collect();
+	
+	// sort the child states, best one first
+	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
+	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega(*enemy, *me));
+	
+	// for each child state
+	for (me, enemy) in states {
+		
+		let q = -solve_endgame_nomo(enemy, me, -beta, -alpha);
+		
+		if q >= beta {
+			return q;
+		}
+		
+		if q > alpha {
+			alpha = q;
+		}
+		
+	}
+	
+	return alpha;
 	
 }
 
@@ -280,63 +386,6 @@ fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 			move_idx += 1;
 		}
 		i += 1;
-	}
-	
-	return alpha;
-	
-}
-
-/// Fail-hard negamax for endgame solving
-/// Uses move ordering for states with more than stop_mo_at_empties number of empty disks
-/// Optimal stop_mo_at_empties=7
-/// https://www.chessprogramming.org/Alpha-Beta
-fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_empties: u8) -> i8 {
-	
-	// TODO: This is slower than java. why?
-	
-	// if the game is over, evaluate who won
-	if game_over(me, enemy) {
-		return evaluation(me, enemy);
-	}
-	
-	// get possible moves
-	let moves = generate_moves(me, enemy);
-	
-	// if no moves, pass
-	if moves == 0 {
-		return -solve_endgame_mo(enemy, me, -beta, -alpha, stop_mo_at_empties);
-	}
-	
-	// apply each move and get the state
-	let mut states: Vec<(u64, u64)> = to_idx_move_vec(moves)
-		.iter()
-		.map(|mov| make_move(1u64 << *mov, me, enemy))
-		.collect();
-	
-	// sort the child states, best one first
-	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
-	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
-	
-	let empty_disks = empty_disks(me, enemy);
-	
-	// for each child state
-	for (me, enemy) in states {
-		
-		// stop ordering the moves if the empty disks is smaller than the cutoff
-		let q = if empty_disks > stop_mo_at_empties {
-			-solve_endgame_mo(enemy, me, -beta, -alpha, stop_mo_at_empties)
-		} else {
-			-solve_endgame_nomo(enemy, me, -beta, -alpha)
-		};
-		
-		if q >= beta {
-			return q;
-		}
-		
-		if q > alpha {
-			alpha = q;
-		}
-		
 	}
 	
 	return alpha;
