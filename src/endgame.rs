@@ -153,8 +153,42 @@ fn heuristic_eg_nega(me: u64, enemy: u64) -> i32 {
 	
 }
 
+/// Do a negamax 1 deep on `heuristic_eg_nega`
+fn heuristic_eg_nega_d1(me: u64, enemy: u64) -> i32 {
+	
+	let moves = generate_moves(me, enemy);
+	
+	if moves == 0 {
+		return heuristic_eg_nega(me, enemy);
+	}
+	
+	let mut min_score = i32::MAX;
+	
+	// for each move
+	let num_moves: usize = moves.count_ones() as usize;
+	let mut move_idx: usize = 0;
+	let mut i: u8 = 0;
+	while move_idx < num_moves {
+		if ((moves >> i) & 1) == 1 {
+			
+			let (me, enemy) = make_move(1u64 << i, me, enemy);
+			let q = heuristic_eg_nega(enemy, me);
+			
+			if q < min_score {
+				min_score = q;
+			}
+			
+			move_idx += 1;
+		}
+		i += 1;
+	}
+	
+	return -min_score;
+	
+}
+
 /// Solves the endgame.
-/// Fail-soft negamax
+/// Fail-hard negamax
 /// Returns (move, eval)
 pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, i8) {
 	
@@ -181,9 +215,8 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 		.collect();
 	
 	// sort the child states, best one first
-	states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega(*enemy, *me));
+	states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
 	
-	let mut best_score = -127;
 	let mut best_move: u8 = 65;
 	
 	// for each child state
@@ -195,21 +228,18 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 			return (mov as u8, q);
 		}
 		
-		if q > best_score {
-			best_score = q;
-			best_move = mov as u8;
-			if q > alpha {
-				alpha = q;
-			}
+		if q > alpha {
+			alpha = q;
+			best_move = mov;
 		}
 		
 	}
 	
-	return (best_move, best_score);
+	return (best_move, alpha);
 	
 }
 
-/// Fail-soft negamax for endgame solving
+/// Fail-hard negamax for endgame solving
 /// Does not use move ordering
 /// https://www.chessprogramming.org/Alpha-Beta
 fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
@@ -228,7 +258,6 @@ fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 	}
 	
 	let num_moves: usize = moves.count_ones() as usize;
-	let mut best_score = -127;
 	
 	// for each move
 	let mut move_idx: usize = 0;
@@ -244,11 +273,8 @@ fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 				return q;
 			}
 			
-			if q > best_score {
-				best_score = q;
-				if q > alpha {
-					alpha = q;
-				}
+			if q > alpha {
+				alpha = q;
 			}
 			
 			move_idx += 1;
@@ -256,11 +282,11 @@ fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 		i += 1;
 	}
 	
-	return best_score;
+	return alpha;
 	
 }
 
-/// Fail-soft negamax for endgame solving
+/// Fail-hard negamax for endgame solving
 /// Uses move ordering for states with more than stop_mo_at_empties number of empty disks
 /// Optimal stop_mo_at_empties=7
 /// https://www.chessprogramming.org/Alpha-Beta
@@ -289,9 +315,8 @@ fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_emp
 	
 	// sort the child states, best one first
 	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
-	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega(*enemy, *me));
+	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
 	
-	let mut best_score = -127;
 	let empty_disks = empty_disks(me, enemy);
 	
 	// for each child state
@@ -308,15 +333,12 @@ fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_emp
 			return q;
 		}
 		
-		if q > best_score {
-			best_score = q;
-			if q > alpha {
-				alpha = q;
-			}
+		if q > alpha {
+			alpha = q;
 		}
 		
 	}
 	
-	return best_score;
+	return alpha;
 	
 }
