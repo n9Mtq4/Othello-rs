@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use bitintr::{Blsi, Blsr};
+
 const MASK_E: u64 = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110u64;
 const MASK_W: u64 = 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111u64;
 
@@ -99,6 +101,32 @@ pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	
 	return moves;
 	
+}
+
+/// Gets the next mov bit mask (1 << mov_idx) from moves
+/// Removes it as a move from moves
+#[inline(always)]
+pub fn next_bit_move(moves: &mut u64) -> u64 {
+	// the following 3 lines work without bitintr, but are slightly slower
+	// let i = moves.trailing_zeros();
+	// let mov = 1 << i;
+	// *moves &= !mov;
+	let mov = moves.blsi();
+	*moves = moves.blsr();
+	return mov;
+}
+
+/// Gets the next mov idx from moves
+/// Removes it as a move from moves
+#[inline(always)]
+pub fn next_idx_move(moves: &mut u64) -> u8 {
+	// the following 3 lines work without bitintr, but are slightly slower
+	// let i = moves.trailing_zeros();
+	// let mov = 1 << i;
+	// *moves &= !mov;
+	let i = moves.trailing_zeros() as u8;
+	*moves = moves.blsr();
+	return i;
 }
 
 #[inline(always)]
@@ -209,38 +237,26 @@ pub fn empty_disks(black: u64, white: u64) -> u8 {
 	(!(black | white)).count_ones() as u8
 }
 
-pub fn to_idx_move_vec(moves: u64) -> Vec<u8> {
+pub fn to_idx_move_vec(mut moves: u64) -> Vec<u8> {
 	
 	let num_moves: usize = moves.count_ones() as usize;
 	let mut vec = Vec::with_capacity(num_moves);
 	
-	let mut move_idx: usize = 0;
-	let mut i: u8 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			vec.push(i);
-			move_idx += 1;
-		}
-		i += 1;
+	while moves != 0 {
+		vec.push(next_idx_move(&mut moves));
 	}
 	
 	return vec;
 	
 }
 
-pub fn to_bit_move_vec(moves: u64) -> Vec<u64> {
+pub fn to_bit_move_vec(mut moves: u64) -> Vec<u64> {
 	
 	let num_moves: usize = moves.count_ones() as usize;
 	let mut vec = Vec::with_capacity(num_moves);
 	
-	let mut move_idx: usize = 0;
-	let mut i: u32 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			vec.push(1u64 << i);
-			move_idx += 1;
-		}
-		i += 1;
+	while moves != 0 {
+		vec.push(next_bit_move(&mut moves));
 	}
 	
 	return vec;
