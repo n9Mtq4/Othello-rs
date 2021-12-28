@@ -52,7 +52,7 @@ impl SearchParams {
 		let adj_time = ((p >> 14) & 0b1) != 0;
 		
 		// ensure not too deep
-		end_depth = end_depth.clamp(1, 20);
+		end_depth = end_depth.clamp(1, 22);
 		mid_depth = mid_depth.clamp(1, 10);
 		
 		SearchParams {
@@ -82,7 +82,7 @@ impl SearchParams {
 		if self.solve_end_exact {
 			100
 		} else {
-			-1
+			1
 		}
 	}
 	
