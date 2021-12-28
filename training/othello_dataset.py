@@ -64,7 +64,7 @@ class OthelloNegaDataset(Dataset):
         
         # emphasize the q near 0 so the model focuses more on win/loss
         # over exactly how many disks it will win by
-        q = np.tanh(2.0 * q)
+        # q = np.tanh(2.0 * q)
         
         board_vec = long2vec(me, enemy)
         board_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], board_vec)

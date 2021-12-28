@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 LR = 0.0002
 EPOCHS = 200
 NUM_WORKERS = 16
-CSV_PATH = 'PATH TO CSV DATA HERE'
+CSV_PATH = '~/workspace/OthelloGui/train_data/novello4.4M_av_ns.csv'
 
 
 class ResBlock(nn.Module):
@@ -59,6 +59,18 @@ class OthelloNNet(nn.Module):
         return x
 
 
+class ScaledMSELoss(nn.Module):
+    
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, inputs, targets):
+        
+        mse_loss = (inputs - targets) ** 2
+        weight = torch.exp(-torch.abs(8 * targets)) + 1
+        return torch.mean(mse_loss * weight)
+
+
 def main():
     
     print(f"{LR=}")
@@ -86,11 +98,14 @@ def main():
 
 def train(model, dataloader):
     
-    criterion = torch.nn.MSELoss()
+    criterion = ScaledMSELoss()
+    
     optimizer = Ranger21(
         model.parameters(),
         lr=LR,
         num_epochs=EPOCHS,
+        # warmdown_start_pct=0.50,
+        # use_adabelief=True,
         num_batches_per_epoch=len(dataloader)
     )
     
