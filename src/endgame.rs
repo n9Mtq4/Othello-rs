@@ -222,7 +222,7 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 		let q = -solve_endgame_mo(enemy, me, -beta, -alpha, OPTIMAL_STOP_MO_AT_EMPTIES);
 		
 		if q >= beta {
-			return (mov as u8, q);
+			return (mov as u8, beta); // fail-hard beta-cutoff
 		}
 		
 		if q > alpha {
@@ -278,7 +278,7 @@ fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_emp
 		};
 		
 		if q >= beta {
-			return q;
+			return beta; // fail-hard beta-cutoff
 		}
 		
 		if q > alpha {
@@ -325,7 +325,7 @@ fn solve_endgame_weakmo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 		let q = -solve_endgame_nomo(enemy, me, -beta, -alpha);
 		
 		if q >= beta {
-			return q;
+			return beta; // fail-hard beta-cutoff
 		}
 		
 		if q > alpha {
@@ -365,7 +365,7 @@ fn solve_endgame_nomo(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> i8 {
 		let q = -solve_endgame_nomo(enemy, me, -beta, -alpha);
 		
 		if q >= beta {
-			return q;
+			return beta; // fail-hard beta-cutoff
 		}
 		
 		if q > alpha {
