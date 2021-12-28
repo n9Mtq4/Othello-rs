@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use tch::{CModule, Device, Tensor};
-use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_bit_move_vec};
+use crate::othello_board::{evaluation, game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec};
 
 /// Convert an othello board into a tensor
 fn board_to_tensor(me: u64, enemy: u64) -> Tensor {
@@ -94,6 +94,7 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 }
 
 /// Perform negamax on a state, using evaluations stored in a vector `v`.
+/// Fail-soft framework
 fn negamax_vec(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize) -> f32 {
 	
 	if game_over(me, enemy) {
@@ -107,33 +108,29 @@ fn negamax_vec(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize
 	}
 	
 	// get possible moves
-	let moves = generate_moves(me, enemy);
+	let mut moves = generate_moves(me, enemy);
 	
 	// if no moves, pass
 	if moves == 0 {
 		return negamax_vec(v, enemy, me, depth - 1, vec_idx);
 	}
 	
-	let num_moves: usize = moves.count_ones() as usize;
+	// let num_moves: usize = moves.count_ones() as usize;
 	let mut best_score = -127.0;
 	
 	// for each move
-	let mut move_idx: usize = 0;
-	let mut i: u8 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			
-			// evaluate the child state
-			let (me, enemy) = make_move(1u64 << i, me, enemy);
-			let q = -negamax_vec(v, enemy, me, depth - 1, vec_idx);
-			
-			if q > best_score {
-				best_score = q;
-			}
-			
-			move_idx += 1;
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		// evaluate the child state
+		let (me, enemy) = make_move(mov, me, enemy);
+		let q = -negamax_vec(v, enemy, me, depth - 1, vec_idx);
+		
+		if q > best_score {
+			best_score = q;
 		}
-		i += 1;
+		
 	}
 	
 	return best_score;
@@ -155,7 +152,7 @@ fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth
 	}
 	
 	// get possible moves
-	let moves = generate_moves(me, enemy);
+	let mut moves = generate_moves(me, enemy);
 	
 	// if no moves, pass
 	if moves == 0 {
@@ -163,19 +160,13 @@ fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth
 	}
 	
 	// for each move
-	let num_moves: usize = moves.count_ones() as usize;
-	let mut move_idx: usize = 0;
-	let mut i: u8 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			
-			// put the children states into the vector
-			let (m, e) = make_move(1u64 << i, me, enemy);
-			board_children_to_flat_tensor(v, e, m, depth - 1);
-			
-			move_idx += 1;
-		}
-		i += 1
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		let (m, e) = make_move(mov, me, enemy);
+		board_children_to_flat_tensor(v, e, m, depth - 1);
+		
 	}
 	
 }

@@ -1,4 +1,3 @@
-use bitintr::{Blsi, Blsr};
 use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec, to_idx_move_vec};
 
 /// End game heuristic weights
