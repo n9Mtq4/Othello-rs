@@ -141,7 +141,14 @@ pub fn make_move(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
 
 pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	
+	// TODO: Optimize. in endgame search, 46% of the time is spent here
+	// for each of 64 disks, have 8 direction masks. use pext to get ray
+	// use blcmsk to find which disks to flip
+	// test to make sure we flank. then use pdep to make flip mask
+	// also investigate SSE method https://github.com/abulmo/edax-reversi/blob/master/src/flip_sse.c
+	
 	let mut captured;
+	let mut flips = 0u64;
 	
 	*bb_self |= mov;
 	
@@ -150,8 +157,7 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 		captured |= shift_n(captured) & *bb_enemy;
 	}
 	if shift_n(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
 	
 	captured = shift_s(mov) & *bb_enemy;
@@ -159,8 +165,7 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 		captured |= shift_s(captured) & *bb_enemy;
 	}
 	if shift_s(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
 	
 	captured = shift_w(mov) & *bb_enemy;
@@ -168,8 +173,7 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 		captured |= shift_w(captured) & *bb_enemy;
 	}
 	if shift_w(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
 	
 	captured = shift_e(mov) & *bb_enemy;
@@ -177,8 +181,7 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 		captured |= shift_e(captured) & *bb_enemy;
 	}
 	if shift_e(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
 	
 	captured = shift_nw(mov) & *bb_enemy;
@@ -186,8 +189,7 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 		captured |= shift_nw(captured) & *bb_enemy;
 	}
 	if shift_nw(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
 	
 	captured = shift_ne(mov) & *bb_enemy;
@@ -195,29 +197,27 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 		captured |= shift_ne(captured) & *bb_enemy;
 	}
 	if shift_ne(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
 	
 	captured = shift_sw(mov) & *bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_sw(captured) & *bb_enemy;
-		
 	}
 	if shift_sw(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
 	
 	captured = shift_se(mov) & *bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_se(captured) & *bb_enemy;
-		
 	}
 	if shift_se(captured) & *bb_self != 0 {
-		*bb_self |= captured;
-		*bb_enemy &= !captured;
+		flips |= captured;
 	}
+	
+	*bb_self |= flips;
+	*bb_enemy &= !flips;
 	
 }
 
