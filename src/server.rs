@@ -206,6 +206,8 @@ pub fn server_start(port: u16) {
 		model.to(Device::Cuda(0), Kind::Float, false);
 	}
 	
+	model.set_eval();
+	
 	let model = Arc::new(Mutex::new(model));
 	
 	// count network parameters for nice log message
@@ -236,6 +238,7 @@ pub fn server_start(port: u16) {
 			}
 		}
 	}
+	
 	// close the socket server
 	drop(listener);
 	
