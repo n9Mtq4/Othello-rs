@@ -80,7 +80,7 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	let output: Tensor = if cfg!(feature = "gpu") {
 		model.forward_ts(&[t])
 			.expect("model prediction failed")
-			.to(Device::Cuda(0))
+			.to(Device::Cpu)
 	} else {
 		model.forward_ts(&[t])
 			.expect("model prediction failed")
