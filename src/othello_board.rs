@@ -227,6 +227,22 @@ pub fn game_over(bb_p1: u64, bb_p2: u64) -> bool {
 			generate_moves(bb_p2, bb_p1) == 0);
 }
 
+/// Evaluates a position for win/loss/draw for midgame search
+/// It is possible for the ai to get eliminated early, and since
+/// evaluation doesn't add empty disks to the winner, the search
+/// could pick loosing early as the best move if the neural network is pessimistic
+/// Inversely, it will delay killing the opponent early as continuing will allow for more
+/// disks to be played, thus improving the score.
+/// But, we should take the earliest win and delay the loss, so this returns i8::MAX
+/// if forced winning (end game early) and i8::MIN if forced loss (don't play an early losing move)
+#[inline(always)]
+pub fn wld_evaluation(black: u64, white: u64) -> i8 {
+	let q = evaluation(black, white);
+	if q == 0 { 0 }
+	else if q > 0 { i8::MAX }
+	else { i8::MIN }
+}
+
 #[inline(always)]
 pub fn evaluation(black: u64, white: u64) -> i8 {
 	(black.count_ones() as i8) - (white.count_ones() as i8)

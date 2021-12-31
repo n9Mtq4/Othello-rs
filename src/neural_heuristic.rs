@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use tch::{CModule, Device, Tensor};
-use crate::othello_board::{evaluation, game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec};
+use crate::othello_board::{game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec, wld_evaluation};
 
 /// Convert an othello board into a tensor
 fn board_to_tensor(me: u64, enemy: u64) -> Tensor {
@@ -98,7 +98,7 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 fn negamax_vec(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize) -> f32 {
 	
 	if game_over(me, enemy) {
-		return (evaluation(me, enemy) as f32) / (100.0 * 64.0);
+		return (wld_evaluation(me, enemy) as f32) / (100.0 * 64.0);
 	}
 	
 	// if the depth is 0, uses the evaluation stored in the vector
@@ -179,7 +179,7 @@ pub fn nnpredict_d1(model: &CModule, me: u64, enemy: u64) -> i32 {
 	
 	// if no moves, the game must have ended, so return endgame evaluation
 	if moves == 0 {
-		return 100 * (evaluation(me, enemy) as i32);
+		return 100 * (wld_evaluation(me, enemy) as i32);
 	}
 	
 	// Get all the state's children to tensors

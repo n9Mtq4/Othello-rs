@@ -1,6 +1,6 @@
 use tch::CModule;
 use crate::neural_heuristic::{nnpredict_batch, nnpredict_d1, nnpredict_dn};
-use crate::othello_board::{evaluation, game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec, to_idx_move_vec};
+use crate::othello_board::{game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec, to_idx_move_vec, wld_evaluation};
 
 /// optimal depth until the bottom of the tree to stop move ordering
 const BEST_STOP_MO_AT_DEPTH: i8 = if cfg!(feature = "large_batch") {
@@ -28,7 +28,7 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
-		return (65, 100 * (evaluation(me, enemy) as i32));
+		return (65, 100 * (wld_evaluation(me, enemy) as i32));
 	}
 	
 	// if the depth is 0, evaluate the position with the nn
@@ -101,7 +101,7 @@ fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
-		return 100 * (evaluation(me, enemy) as i32);
+		return 100 * (wld_evaluation(me, enemy) as i32);
 	}
 	
 	// if the depth is 0, evaluate the position with the nn
@@ -153,7 +153,7 @@ fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, 
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
-		return 100 * (evaluation(me, enemy) as i32);
+		return 100 * (wld_evaluation(me, enemy) as i32);
 	}
 	
 	// if the depth is 0, evaluate the position with the nn
