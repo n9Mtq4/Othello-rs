@@ -98,7 +98,7 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 fn negamax_vec(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize) -> f32 {
 	
 	if game_over(me, enemy) {
-		return evaluation(me, enemy) as f32;
+		return (evaluation(me, enemy) as f32) / (100.0 * 64.0);
 	}
 	
 	// if the depth is 0, uses the evaluation stored in the vector
@@ -115,7 +115,6 @@ fn negamax_vec(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize
 		return negamax_vec(v, enemy, me, depth - 1, vec_idx);
 	}
 	
-	// let num_moves: usize = moves.count_ones() as usize;
 	let mut best_score = -127.0;
 	
 	// for each move
