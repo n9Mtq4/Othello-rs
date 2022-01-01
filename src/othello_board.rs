@@ -250,7 +250,7 @@ pub fn evaluation(black: u64, white: u64) -> i8 {
 
 #[inline(always)]
 pub fn empty_disks(black: u64, white: u64) -> u8 {
-	(!(black | white)).count_ones() as u8
+	(black | white).count_zeros() as u8
 }
 
 pub fn to_idx_move_vec(mut moves: u64) -> Vec<u8> {
