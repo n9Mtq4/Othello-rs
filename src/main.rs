@@ -1,6 +1,5 @@
 mod othello_board;
 mod othello_state;
-mod othello_hash;
 mod endgame;
 mod neural_heuristic;
 mod neural_search;
@@ -34,6 +33,8 @@ fn main() {
 	}
 	
 	// start the server
-	server_start(port);
+	tch::no_grad(|| {
+		server_start(port);
+	});
 	
 }

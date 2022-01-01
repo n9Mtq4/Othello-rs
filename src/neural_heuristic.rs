@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use tch::{CModule, Device, Tensor};
-use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_bit_move_vec};
+use crate::othello_board::{game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec, wld_evaluation};
 
 /// Convert an othello board into a tensor
 fn board_to_tensor(me: u64, enemy: u64) -> Tensor {
@@ -51,6 +51,8 @@ pub fn nnpredict_batch(model: &CModule, v: &Vec<(u64, u64)>) -> Vec<f32> {
 	
 }
 
+/// Performs a prediction on a state. Performs minimax down to depth of `depth`.
+/// All states in the minimax tree are batched and evaluated together.
 pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	
 	// TODO: determine optimal capacity
@@ -60,7 +62,12 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	// negamax to collect batch
 	board_children_to_flat_tensor(&mut tensors, me, enemy, depth);
 	
-	// let result_vec = nnpredict_batch(model, &states);
+	// if there are no moves 3 plys down (even with moves for us), tensors is empty.
+	// If this is the case, stacking will fail. If this is the case, rerun with a lesser depth
+	// Ex: depth=3, fails on (me=18446744043523145728, enemy=3948544) without this check
+	if tensors.is_empty() {
+		return nnpredict_dn(model, me, enemy, depth - 1);
+	}
 	
 	// stack all states in to 1 batch
 	let t = if cfg!(feature = "gpu") {
@@ -73,7 +80,7 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	let output: Tensor = if cfg!(feature = "gpu") {
 		model.forward_ts(&[t])
 			.expect("model prediction failed")
-			.to(Device::Cuda(0))
+			.to(Device::Cpu)
 	} else {
 		model.forward_ts(&[t])
 			.expect("model prediction failed")
@@ -82,56 +89,54 @@ pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	let result_vec: Vec<f32> = Vec::from(output);
 	
 	// negamax to evaluate using result from batch
-	(100.0 * 64.0 * negamax_tensor(&result_vec, me, enemy, depth, &mut 0)) as i32
+	(100.0 * 64.0 * negamax_vec(&result_vec, me, enemy, depth, &mut 0)) as i32
 	
 }
 
-fn negamax_tensor(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize) -> f32 {
+/// Perform negamax on a state, using evaluations stored in a vector `v`.
+/// Fail-soft framework
+fn negamax_vec(v: &Vec<f32>, me: u64, enemy: u64, depth: i8, vec_idx: &mut usize) -> f32 {
 	
 	if game_over(me, enemy) {
-		return evaluation(me, enemy) as f32;
+		return (wld_evaluation(me, enemy) as f32) / (100.0 * 64.0);
 	}
 	
-	// if the depth is 0, push the tensor to the vector
+	// if the depth is 0, uses the evaluation stored in the vector
 	if depth <= 0 {
 		(*vec_idx) += 1;
 		return v[(*vec_idx) - 1];
 	}
 	
 	// get possible moves
-	let moves = generate_moves(me, enemy);
+	let mut moves = generate_moves(me, enemy);
 	
 	// if no moves, pass
 	if moves == 0 {
-		return negamax_tensor(v, enemy, me, depth - 1, vec_idx);
+		return negamax_vec(v, enemy, me, depth - 1, vec_idx);
 	}
 	
-	let num_moves: usize = moves.count_ones() as usize;
 	let mut best_score = -127.0;
 	
 	// for each move
-	let mut move_idx: usize = 0;
-	let mut i: u8 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			
-			// evaluate the child state
-			let (me, enemy) = make_move(1u64 << i, me, enemy);
-			let q = -negamax_tensor(v, enemy, me, depth - 1, vec_idx);
-			
-			if q > best_score {
-				best_score = q;
-			}
-			
-			move_idx += 1;
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		// evaluate the child state
+		let (me, enemy) = make_move(mov, me, enemy);
+		let q = -negamax_vec(v, enemy, me, depth - 1, vec_idx);
+		
+		if q > best_score {
+			best_score = q;
 		}
-		i += 1;
+		
 	}
 	
 	return best_score;
 	
 }
 
+/// put all children board tensors to a depth of `depth` into a flat vector.
 fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth: i8) {
 	
 	// if the game is over, evaluate who won
@@ -146,7 +151,7 @@ fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth
 	}
 	
 	// get possible moves
-	let moves = generate_moves(me, enemy);
+	let mut moves = generate_moves(me, enemy);
 	
 	// if no moves, pass
 	if moves == 0 {
@@ -154,23 +159,18 @@ fn board_children_to_flat_tensor(v: &mut Vec<Tensor>, me: u64, enemy: u64, depth
 	}
 	
 	// for each move
-	let num_moves: usize = moves.count_ones() as usize;
-	let mut move_idx: usize = 0;
-	let mut i: u8 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			
-			let (m, e) = make_move(1u64 << i, me, enemy);
-			board_children_to_flat_tensor(v, e, m, depth - 1);
-			
-			move_idx += 1;
-		}
-		i += 1
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		let (m, e) = make_move(mov, me, enemy);
+		board_children_to_flat_tensor(v, e, m, depth - 1);
+		
 	}
 	
 }
 
-/// Perform a predicton on an othello board
+/// Perform a prediction on an othello board
 /// Goes down 1 depth and runs the prediction on all children in 1 batch
 pub fn nnpredict_d1(model: &CModule, me: u64, enemy: u64) -> i32 {
 	
@@ -179,7 +179,7 @@ pub fn nnpredict_d1(model: &CModule, me: u64, enemy: u64) -> i32 {
 	
 	// if no moves, the game must have ended, so return endgame evaluation
 	if moves == 0 {
-		return 100 * (evaluation(me, enemy) as i32);
+		return 100 * (wld_evaluation(me, enemy) as i32);
 	}
 	
 	// Get all the state's children to tensors

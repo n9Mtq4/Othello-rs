@@ -1,4 +1,10 @@
 /target
 
+__pycache__
+
 .idea
 *.iml
+
+training/ranger21
+*.pth
+libs

@@ -11,7 +11,7 @@ use byteorder::{NetworkEndian, WriteBytesExt};
 use tch::{CModule, Device, Kind};
 use crate::classic_search::classic_search_root;
 use crate::neural_search::nnsearch_root;
-use crate::othello_board::{empty_disks, generate_moves};
+use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves};
 use crate::endgame::solve_endgame_root;
 use crate::opening_book::{OthelloBook, read_book, search_book};
 
@@ -53,7 +53,7 @@ impl SearchParams {
 		let adj_time = ((p >> 14) & 0b1) != 0;
 		
 		// ensure not too deep
-		// end_depth = end_depth.clamp(1, 20);
+		// end_depth = end_depth.clamp(1, 22);
 		// mid_depth = mid_depth.clamp(1, 10);
 		
 		SearchParams {
@@ -70,9 +70,9 @@ impl SearchParams {
 	/// for a true depth of mid_depth
 	fn adjusted_mid_depth(&self) -> u8 {
 		if cfg!(feature = "large_batch") {
-			max(1, self.mid_depth - 3)
+			max(1 + 3, self.mid_depth) - 3
 		} else {
-			max(1, self.mid_depth - 1)
+			max(1 + 1, self.mid_depth) - 1
 		}
 	}
 	
@@ -83,7 +83,7 @@ impl SearchParams {
 		if self.solve_end_exact {
 			100
 		} else {
-			-1
+			1
 		}
 	}
 	
@@ -92,6 +92,11 @@ impl SearchParams {
 /// Returns (best_move, centidisk_score) for the given position
 /// Performs search according to search params
 fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, params: &SearchParams) -> (u8, i16) {
+	
+	// if the game is over, return the evaluation
+	if game_over(me, enemy) {
+		return (65, 100 * (evaluation(me, enemy) as i16));
+	}
 	
 	// if there are no moves, pass
 	if generate_moves(me, enemy) == 0 {
@@ -204,6 +209,8 @@ pub fn server_start(port: u16) {
 		model.to(Device::Cuda(0), Kind::Float, false);
 	}
 	
+	model.set_eval();
+	
 	let model = Arc::new(Mutex::new(model));
 	
 	// count network parameters for nice log message
@@ -234,6 +241,7 @@ pub fn server_start(port: u16) {
 			}
 		}
 	}
+	
 	// close the socket server
 	drop(listener);
 	

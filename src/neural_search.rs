@@ -1,19 +1,22 @@
 use tch::CModule;
 use crate::neural_heuristic::{nnpredict_batch, nnpredict_d1, nnpredict_dn};
-use crate::othello_board::{evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
+use crate::othello_board::{game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec, to_idx_move_vec, wld_evaluation};
 
+/// optimal depth until the bottom of the tree to stop move ordering
 const BEST_STOP_MO_AT_DEPTH: i8 = if cfg!(feature = "large_batch") {
 	2 // optimal mo cutoff is 2 for large batch
 } else {
 	2 // optimal mo cutoff is 2 for cpu
 };
 
+/// Use neural network to evaluate a state
 #[inline(always)]
 fn nnsearch_heuristic(model: &CModule, me: u64, enemy: u64) -> i32 {
 	if cfg!(feature = "large_batch") {
-		// optimal batch depth is 3
+		// optimal batch depth is 3 for a GPU
 		nnpredict_dn(model, me, enemy, 3)
 	} else {
+		// optimal batch depth is 1 for CPU
 		nnpredict_d1(model, me, enemy)
 	}
 }
@@ -25,7 +28,7 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
-		return (65, 100 * (evaluation(me, enemy) as i32));
+		return (65, 100 * (wld_evaluation(me, enemy) as i32));
 	}
 	
 	// if the depth is 0, evaluate the position with the nn
@@ -98,7 +101,7 @@ fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
-		return 100 * (evaluation(me, enemy) as i32);
+		return 100 * (wld_evaluation(me, enemy) as i32);
 	}
 	
 	// if the depth is 0, evaluate the position with the nn
@@ -107,40 +110,35 @@ fn nnsearch_nomo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32
 	}
 	
 	// get possible moves
-	let moves = generate_moves(me, enemy);
+	let mut moves = generate_moves(me, enemy);
 	
 	// if no moves, pass
 	if moves == 0 {
 		return -nnsearch_nomo(model, enemy, me, -beta, -alpha, depth - 1);
 	}
 	
-	let num_moves: usize = moves.count_ones() as usize;
 	let mut best_score = -640000;
 	
 	// for each move
-	let mut move_idx: usize = 0;
-	let mut i: u8 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			
-			// evaluate the child state
-			let (me, enemy) = make_move(1u64 << i, me, enemy);
-			let q = -nnsearch_nomo(model, enemy, me, -beta, -alpha, depth - 1);
-			
-			if q >= beta {
-				return q;
-			}
-			
-			if q > best_score {
-				best_score = q;
-				if q > alpha {
-					alpha = q;
-				}
-			}
-			
-			move_idx += 1;
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		// evaluate the child state
+		let (me, enemy) = make_move(mov, me, enemy);
+		let q = -nnsearch_nomo(model, enemy, me, -beta, -alpha, depth - 1);
+		
+		if q >= beta {
+			return q;
 		}
-		i += 1;
+		
+		if q > best_score {
+			best_score = q;
+			if q > alpha {
+				alpha = q;
+			}
+		}
+		
 	}
 	
 	return best_score;
@@ -155,7 +153,7 @@ fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, 
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
-		return 100 * (evaluation(me, enemy) as i32);
+		return 100 * (wld_evaluation(me, enemy) as i32);
 	}
 	
 	// if the depth is 0, evaluate the position with the nn
@@ -173,9 +171,9 @@ fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, 
 	
 	// apply each move and get the state
 	// TODO: optimize sorting here
-	let states: Vec<(u64, u64)> = to_idx_move_vec(moves)
+	let states: Vec<(u64, u64)> = to_bit_move_vec(moves)
 		.iter()
-		.map(|mov| make_move(1u64 << *mov, me, enemy))
+		.map(|mov| make_move(*mov, me, enemy))
 		.collect();
 	
 	let keys: Vec<f32> = nnpredict_batch(model, &states);

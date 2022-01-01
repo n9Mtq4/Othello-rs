@@ -26,8 +26,8 @@ def evaluate_position(host, port, me, enemy, time, params):
 
 
 def serialize_params(adj_time, use_book, solve_end_exact, mid_depth, end_depth):
-    assert mid_depth in range(0, 7), "invalid range for mid_depth"
-    assert end_depth in range(0, 21), "invalid range for end_depth"
+    assert mid_depth in range(0, 11), "invalid range for mid_depth"
+    assert end_depth in range(0, 23), "invalid range for end_depth"
     p = 0
     p |= end_depth << 0
     p |= mid_depth << 6
