@@ -1,5 +1,5 @@
 use crate::classic_weights::CLASSIC_WEIGHTS;
-use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves, make_move, to_idx_move_vec};
+use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves, make_move, next_bit_move, to_idx_move_vec};
 
 /// Flips a board along the diagonal
 /// https://www.chessprogramming.org/Flipping_Mirroring_and_Rotating
@@ -21,7 +21,9 @@ fn flip_diag_a1h8(mut x: u64) -> u64 {
 /// Positions with 7-25 empties are within the expected range for this function.
 /// MAE=937 centidisks
 /// Returns from POV of `me` and is for use in a negamax framework.
-fn heuristic_eg_nega(me: u64, enemy: u64, w_idx: usize) -> i32 {
+fn heuristic_mg_nega(me: u64, enemy: u64) -> i32 {
+	
+	let w_idx: usize = 4 * empty_disks(me, enemy) as usize;
 	
 	let m00 = (me >> 0 * 8) & 0b11111111u64;
 	let m10 = (me >> 1 * 8) & 0b11111111u64;
@@ -83,6 +85,35 @@ fn heuristic_eg_nega(me: u64, enemy: u64, w_idx: usize) -> i32 {
 	
 }
 
+/// Do a negamax 1 deep on `heuristic_eg_nega`
+fn heuristic_mg_nega_d1(me: u64, enemy: u64) -> i32 {
+	
+	let mut moves = generate_moves(me, enemy);
+	
+	if moves == 0 {
+		return heuristic_mg_nega(me, enemy);
+	}
+	
+	let mut min_score = i32::MAX;
+	
+	// for each move
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		let (me, enemy) = make_move(mov, me, enemy);
+		let q = heuristic_mg_nega(enemy, me);
+		
+		if q < min_score {
+			min_score = q;
+		}
+		
+	}
+	
+	return -min_score;
+	
+}
+
 /// Returns (move, eval)
 pub fn classic_search_root(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8) -> (u8, i32) {
 	
@@ -94,12 +125,9 @@ pub fn classic_search_root(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth
 	// get possible moves
 	let moves = generate_moves(me, enemy);
 	
-	// compute weights offset. assume one disk per ply
-	let w_idx: usize = 4 * ((empty_disks(me, enemy) as usize) - (depth as usize));
-	
 	// if no moves, pass
 	if moves == 0 {
-		return (65, -classic_search_mo(enemy, me, -beta, -alpha, depth - 1, 7, w_idx));
+		return (65, -classic_search_mo(enemy, me, -beta, -alpha, depth - 1, 7));
 	}
 	
 	// apply each move and get the state
@@ -112,38 +140,31 @@ pub fn classic_search_root(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth
 		.collect();
 	
 	// sort the child states, best one first
-	states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega(*enemy, *me, w_idx));
+	states.sort_by_cached_key(|(_, me, enemy)| heuristic_mg_nega_d1(*enemy, *me));
 	
-	let mut best_score = -640000;
 	let mut best_move: u8 = 65;
 	
 	// for each child state
 	for (mov, me, enemy) in states {
 		
-		let q = -classic_search_mo(enemy, me, -beta, -alpha, depth - 1, 7, w_idx);
+		let q = -classic_search_mo(enemy, me, -beta, -alpha, depth - 1, 7);
 		
 		if q >= beta {
-			return (mov as u8, q);
+			return (mov as u8, beta);
 		}
 		
-		if q > best_score {
-			best_score = q;
+		if q > alpha {
+			alpha = q;
 			best_move = mov as u8;
-			if q > alpha {
-				alpha = q;
-			}
 		}
 		
 	}
 	
-	return (best_move, best_score);
+	return (best_move, alpha);
 	
 }
 
-/// Fail-soft negamax for endgame solving
-/// Does not use move ordering
-/// https://www.chessprogramming.org/Alpha-Beta
-fn classic_search_nomo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, w_idx: usize) -> i32 {
+fn classic_search_mo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, stop_mo_at_empties: u8) -> i32 {
 	
 	// if the game is over, evaluate who won
 	if game_over(me, enemy) {
@@ -152,7 +173,7 @@ fn classic_search_nomo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8
 	
 	// if the depth is 0, evaluate the position with the nn
 	if depth <= 0 {
-		return heuristic_eg_nega(me, enemy, w_idx);
+		return heuristic_mg_nega(me, enemy);
 	}
 	
 	// get possible moves
@@ -160,60 +181,7 @@ fn classic_search_nomo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8
 	
 	// if no moves, pass
 	if moves == 0 {
-		return -classic_search_nomo(enemy, me, -beta, -alpha, depth - 1, w_idx);
-	}
-	
-	let num_moves: usize = moves.count_ones() as usize;
-	let mut best_score = -127;
-	
-	// for each move
-	let mut move_idx: usize = 0;
-	let mut i: u8 = 0;
-	while move_idx < num_moves {
-		if ((moves >> i) & 1) == 1 {
-			
-			// evaluate the child state
-			let (me, enemy) = make_move(1u64 << i, me, enemy);
-			let q = -classic_search_nomo(enemy, me, -beta, -alpha, depth - 1, w_idx);
-			
-			if q >= beta {
-				return q;
-			}
-			
-			if q > best_score {
-				best_score = q;
-				if q > alpha {
-					alpha = q;
-				}
-			}
-			
-			move_idx += 1;
-		}
-		i += 1;
-	}
-	
-	return best_score;
-	
-}
-
-fn classic_search_mo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, stop_mo_at_empties: u8, w_idx: usize) -> i32 {
-	
-	// if the game is over, evaluate who won
-	if game_over(me, enemy) {
-		return 100 * (evaluation(me, enemy) as i32);
-	}
-	
-	// if the depth is 0, evaluate the position with the nn
-	if depth <= 0 {
-		return heuristic_eg_nega(me, enemy, w_idx);
-	}
-	
-	// get possible moves
-	let moves = generate_moves(me, enemy);
-	
-	// if no moves, pass
-	if moves == 0 {
-		return -classic_search_mo(enemy, me, -beta, -alpha, depth - 1, stop_mo_at_empties, w_idx);
+		return -classic_search_mo(enemy, me, -beta, -alpha, depth - 1, stop_mo_at_empties);
 	}
 	
 	// apply each move and get the state
@@ -224,9 +192,8 @@ fn classic_search_mo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, 
 	
 	// sort the child states, best one first
 	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
-	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega(*enemy, *me, w_idx));
+	states.sort_by_cached_key(|(me, enemy)| heuristic_mg_nega_d1(*enemy, *me));
 	
-	let mut best_score = -640000;
 	let empty_disks = empty_disks(me, enemy);
 	
 	// for each child state
@@ -234,24 +201,66 @@ fn classic_search_mo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8, 
 		
 		// stop ordering the moves if the empty disks is smaller than the cutoff
 		let q = if empty_disks > stop_mo_at_empties {
-			-classic_search_mo(enemy, me, -beta, -alpha, depth - 1, stop_mo_at_empties, w_idx)
+			-classic_search_mo(enemy, me, -beta, -alpha, depth - 1, stop_mo_at_empties)
 		} else {
-			-classic_search_nomo(enemy, me, -beta, -alpha, depth - 1, w_idx)
+			-classic_search_nomo(enemy, me, -beta, -alpha, depth - 1)
 		};
 		
 		if q >= beta {
-			return q;
+			return beta;
 		}
 		
-		if q > best_score {
-			best_score = q;
-			if q > alpha {
-				alpha = q;
-			}
+		if q > alpha {
+			alpha = q;
 		}
 		
 	}
 	
-	return best_score;
+	return alpha;
+	
+}
+
+/// Fail-hard negamax for endgame solving
+/// Does not use move ordering
+/// https://www.chessprogramming.org/Alpha-Beta
+fn classic_search_nomo(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: i8) -> i32 {
+	
+	// if the game is over, evaluate who won
+	if game_over(me, enemy) {
+		return 100 * (evaluation(me, enemy) as i32);
+	}
+	
+	// if the depth is 0, evaluate the position with the nn
+	if depth <= 0 {
+		return heuristic_mg_nega(me, enemy);
+	}
+	
+	// get possible moves
+	let mut moves = generate_moves(me, enemy);
+	
+	// if no moves, pass
+	if moves == 0 {
+		return -classic_search_nomo(enemy, me, -beta, -alpha, depth - 1);
+	}
+	
+	// for each move
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		let (me, enemy) = make_move(mov, me, enemy);
+		let q = -classic_search_nomo(enemy, me, -beta, -alpha, depth - 1);
+		
+		if q >= beta {
+			return beta;
+		}
+		
+		if q > alpha {
+			alpha = q;
+		}
+		
+	}
+	
+	return alpha;
 	
 }

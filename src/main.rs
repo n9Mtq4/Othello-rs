@@ -1,8 +1,6 @@
 mod othello_board;
 mod othello_state;
 mod endgame;
-mod neural_heuristic;
-mod neural_search;
 mod server;
 mod opening_book;
 mod othello_symmetry;
@@ -12,14 +10,6 @@ mod classic_search;
 use crate::server::server_start;
 
 fn main() {
-	
-	// print out compiled features
-	#[cfg(feature = "gpu")] {
-		println!("Feature \"gpu\" enabled");
-	}
-	#[cfg(feature = "large_batch")] {
-		println!("Feature \"large_batch\" enabled");
-	}
 	
 	let mut port = 35326u16;
 	
@@ -33,8 +23,6 @@ fn main() {
 	}
 	
 	// start the server
-	tch::no_grad(|| {
-		server_start(port);
-	});
+	server_start(port);
 	
 }

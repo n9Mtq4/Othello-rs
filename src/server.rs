@@ -8,9 +8,7 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use byteorder::{NetworkEndian, WriteBytesExt};
-use tch::{CModule, Device, Kind};
 use crate::classic_search::classic_search_root;
-use crate::neural_search::nnsearch_root;
 use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves};
 use crate::endgame::solve_endgame_root;
 use crate::opening_book::{OthelloBook, read_book, search_book};
@@ -53,8 +51,8 @@ impl SearchParams {
 		let adj_time = ((p >> 14) & 0b1) != 0;
 		
 		// ensure not too deep
-		// end_depth = end_depth.clamp(1, 22);
-		// mid_depth = mid_depth.clamp(1, 10);
+		end_depth = end_depth.clamp(1, 22);
+		mid_depth = mid_depth.clamp(1, 22);
 		
 		SearchParams {
 			adj_time,
@@ -91,7 +89,7 @@ impl SearchParams {
 
 /// Returns (best_move, centidisk_score) for the given position
 /// Performs search according to search params
-fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, params: &SearchParams) -> (u8, i16) {
+fn server_get_move(book: &OthelloBook, me: u64, enemy: u64, params: &SearchParams) -> (u8, i16) {
 	
 	// if the game is over, return the evaluation
 	if game_over(me, enemy) {
@@ -117,8 +115,7 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 	}
 	
 	// otherwise perform a negamax neural network search
-	let (mov, q) = nnsearch_root(model, me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
-	// let (mov, q) = classic_search_root(me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
+	let (mov, q) = classic_search_root(me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
 	
 	(mov, q as i16)
 	
@@ -137,7 +134,7 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 /// S - bit to solve exact endgame (1 = exact, 0 = WLD)
 /// D - 6 bits for neural network depth (0-63)
 /// E - 6 bits for endgame depth
-fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStream) {
+fn server_handle_client(book: &OthelloBook, mut stream: TcpStream) {
 	
 	const PROT_SIZE: usize = 8 + 8 + 2 + 2;
 	
@@ -174,7 +171,7 @@ fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStre
 	
 	// evaluate position
 	let before = Instant::now();
-	let (mov, q) = server_get_move(book, model, me, enemy, &search_params);
+	let (mov, q) = server_get_move(book, me, enemy, &search_params);
 	let after = Instant::now();
 	
 	let ms = (after - before).as_millis();
@@ -199,28 +196,6 @@ pub fn server_start(port: u16) {
 	let book = Arc::new(read_book("data/book.bin"));
 	println!("Loaded {} positions into book", book.len());
 	
-	// load pytorch model
-	let mut model = tch::CModule::load("data/model.pt")
-		.unwrap();
-	
-	// move to the GPU
-	#[cfg(feature = "gpu")] {
-		println!("Moving model to GPU...");
-		model.to(Device::Cuda(0), Kind::Float, false);
-	}
-	
-	model.set_eval();
-	
-	let model = Arc::new(Mutex::new(model));
-	
-	// count network parameters for nice log message
-	let num_params = model.lock().unwrap().named_parameters().unwrap()
-		.iter()
-		.map(|(_, t)| t.size().into_iter().reduce(|a, b| a * b).unwrap())
-		.reduce(|a, b| a + b)
-		.unwrap();
-	println!("Loaded nn heuristic model with {} params", num_params);
-	
 	// start listening on localhost:port
 	let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).unwrap();
 	println!("Server listening on port {}", port);
@@ -230,10 +205,8 @@ pub fn server_start(port: u16) {
 		match stream {
 			Ok(stream) => {
 				let my_book = book.clone();
-				let my_model = model.clone();
 				thread::spawn(move || {
-					// TODO: only lock model when using it (now locks even for endgame search)
-					server_handle_client(&my_book, &my_model.lock().unwrap(), stream);
+					server_handle_client(&my_book, stream);
 				});
 			}
 			Err(e) => {
