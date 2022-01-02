@@ -6,7 +6,9 @@ mod neural_search;
 mod server;
 mod opening_book;
 mod othello_symmetry;
+mod rl;
 
+use crate::rl::rl_network;
 use crate::server::server_start;
 
 fn main() {
@@ -19,20 +21,24 @@ fn main() {
 		println!("Feature \"large_batch\" enabled");
 	}
 	
-	let mut port = 35326u16;
-	
-	// try to set port from CLI args
-	let mut args = std::env::args();
-	if args.len() > 1 {
-		port = args.nth(1)
-			.unwrap()
-			.parse()
-			.expect("provided argument isn't a valid port number");
-	}
-	
-	// start the server
 	tch::no_grad(|| {
-		server_start(port);
+		rl_network();
 	});
+	
+	// let mut port = 35326u16;
+	// 
+	// // try to set port from CLI args
+	// let mut args = std::env::args();
+	// if args.len() > 1 {
+	// 	port = args.nth(1)
+	// 		.unwrap()
+	// 		.parse()
+	// 		.expect("provided argument isn't a valid port number");
+	// }
+	// 
+	// // start the server
+	// tch::no_grad(|| {
+	// 	server_start(port);
+	// });
 	
 }

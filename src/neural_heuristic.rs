@@ -55,6 +55,10 @@ pub fn nnpredict_batch(model: &CModule, v: &Vec<(u64, u64)>) -> Vec<f32> {
 /// All states in the minimax tree are batched and evaluated together.
 pub fn nnpredict_dn(model: &CModule, me: u64, enemy: u64, depth: i8) -> i32 {
 	
+	if depth <= 0 {
+		return i32::MIN;
+	}
+	
 	// TODO: determine optimal capacity
 	// 4096 is sufficient for depth=3
 	let mut tensors: Vec<Tensor> = Vec::with_capacity(4096);
