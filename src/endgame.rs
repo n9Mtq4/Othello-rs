@@ -93,63 +93,46 @@ fn heuristic_eg_nega(me: u64, enemy: u64) -> i32 {
 	// Zen2 arch takes 250 cycles for pext. Zen3 takes 1 cycle
 	// https://www.anandtech.com/show/16214/amd-zen-3-ryzen-deep-dive-review-5950x-5900x-5800x-and-5700x-tested/6
 	
-	let m00 = (me >> 0 * 8) & 0b11111111u64;
-	let m10 = (me >> 1 * 8) & 0b11111111u64;
-	let m20 = (me >> 2 * 8) & 0b11111111u64;
-	let m30 = (me >> 3 * 8) & 0b11111111u64;
-	let m31 = (me >> 4 * 8) & 0b11111111u64;
-	let m21 = (me >> 5 * 8) & 0b11111111u64;
-	let m11 = (me >> 6 * 8) & 0b11111111u64;
-	let m01 = (me >> 7 * 8) & 0b11111111u64;
+	let w_idx: [usize; 8] = [0, 1, 2, 3, 3, 2, 1, 0];
 	
-	let e00 = (enemy >> 0 * 8) & 0b11111111u64;
-	let e10 = (enemy >> 1 * 8) & 0b11111111u64;
-	let e20 = (enemy >> 2 * 8) & 0b11111111u64;
-	let e30 = (enemy >> 3 * 8) & 0b11111111u64;
-	let e31 = (enemy >> 4 * 8) & 0b11111111u64;
-	let e21 = (enemy >> 5 * 8) & 0b11111111u64;
-	let e11 = (enemy >> 6 * 8) & 0b11111111u64;
-	let e01 = (enemy >> 7 * 8) & 0b11111111u64;
+	let mut mi: [usize; 8] = [0; 8];
+	for i in 0..8 {
+		mi[i] = ((me >> i * 8) & 0b11111111u64) as usize;
+	}
+	
+	let mut ei: [usize; 8] = [0; 8];
+	for i in 0..8 {
+		ei[i] = ((enemy >> i * 8) & 0b11111111u64) as usize;
+	}
 	
 	let me_flip = flip_diag_a1h8(me);
-	let mf00 = (me_flip >> 0 * 8) & 0b11111111u64;
-	let mf10 = (me_flip >> 1 * 8) & 0b11111111u64;
-	let mf20 = (me_flip >> 2 * 8) & 0b11111111u64;
-	let mf30 = (me_flip >> 3 * 8) & 0b11111111u64;
-	let mf31 = (me_flip >> 4 * 8) & 0b11111111u64;
-	let mf21 = (me_flip >> 5 * 8) & 0b11111111u64;
-	let mf11 = (me_flip >> 6 * 8) & 0b11111111u64;
-	let mf01 = (me_flip >> 7 * 8) & 0b11111111u64;
+	let mut mfi: [usize; 8] = [0; 8];
+	for i in 0..8 {
+		mfi[i] = ((me_flip >> i * 8) & 0b11111111u64) as usize;
+	}
 	
 	let enemy_flip = flip_diag_a1h8(enemy);
-	let ef00 = (enemy_flip >> 0 * 8) & 0b11111111u64;
-	let ef10 = (enemy_flip >> 1 * 8) & 0b11111111u64;
-	let ef20 = (enemy_flip >> 2 * 8) & 0b11111111u64;
-	let ef30 = (enemy_flip >> 3 * 8) & 0b11111111u64;
-	let ef31 = (enemy_flip >> 4 * 8) & 0b11111111u64;
-	let ef21 = (enemy_flip >> 5 * 8) & 0b11111111u64;
-	let ef11 = (enemy_flip >> 6 * 8) & 0b11111111u64;
-	let ef01 = (enemy_flip >> 7 * 8) & 0b11111111u64;
+	let mut efi: [usize; 8] = [0; 8];
+	for i in 0..8 {
+		efi[i] = ((enemy_flip >> i * 8) & 0b11111111u64) as usize;
+	}
 	
-	let me_score = EG_WEIGHTS[0][m00 as usize] + EG_WEIGHTS[0][m01 as usize] +
-		EG_WEIGHTS[1][m10 as usize] + EG_WEIGHTS[1][m11 as usize] +
-		EG_WEIGHTS[2][m20 as usize] + EG_WEIGHTS[2][m21 as usize] +
-		EG_WEIGHTS[3][m30 as usize] + EG_WEIGHTS[3][m31 as usize] +
-		EG_WEIGHTS[0][mf00 as usize] + EG_WEIGHTS[0][mf01 as usize] +
-		EG_WEIGHTS[1][mf10 as usize] + EG_WEIGHTS[1][mf11 as usize] +
-		EG_WEIGHTS[2][mf20 as usize] + EG_WEIGHTS[2][mf21 as usize] +
-		EG_WEIGHTS[3][mf30 as usize] + EG_WEIGHTS[3][mf31 as usize];
+	let mut score = 0;
 	
-	let enemy_score = EG_WEIGHTS[0][e00 as usize] + EG_WEIGHTS[0][e01 as usize] +
-		EG_WEIGHTS[1][e10 as usize] + EG_WEIGHTS[1][e11 as usize] +
-		EG_WEIGHTS[2][e20 as usize] + EG_WEIGHTS[2][e21 as usize] +
-		EG_WEIGHTS[3][e30 as usize] + EG_WEIGHTS[3][e31 as usize] +
-		EG_WEIGHTS[0][ef00 as usize] + EG_WEIGHTS[0][ef01 as usize] +
-		EG_WEIGHTS[1][ef10 as usize] + EG_WEIGHTS[1][ef11 as usize] +
-		EG_WEIGHTS[2][ef20 as usize] + EG_WEIGHTS[2][ef21 as usize] +
-		EG_WEIGHTS[3][ef30 as usize] + EG_WEIGHTS[3][ef31 as usize];
+	for i in 0..8 {
+		score += EG_WEIGHTS[w_idx[i]][mi[i]];
+	}
+	for i in 0..8 {
+		score -= EG_WEIGHTS[w_idx[i]][ei[i]];
+	}
+	for i in 0..8 {
+		score += EG_WEIGHTS[w_idx[i]][mfi[i]];
+	}
+	for i in 0..8 {
+		score -= EG_WEIGHTS[w_idx[i]][efi[i]];
+	}
 	
-	return me_score - enemy_score;
+	return score;
 	
 }
 
