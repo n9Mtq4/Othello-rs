@@ -31,6 +31,8 @@ fn main() {
 	}
 	
 	// start the server
-	server_start(port);
+	tch::no_grad(|| {
+		server_start(port);
+	});
 	
 }
