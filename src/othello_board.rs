@@ -4,6 +4,8 @@ use bitintr::{Blsi, Blsr};
 
 const MASK_E: u64 = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110u64;
 const MASK_W: u64 = 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111u64;
+const A_FILE: u64 = 0x0101010101010101;
+const H_FILE: u64 = 0x8080808080808080;
 
 #[inline(always)]
 fn shift_n(bb: u64) -> u64 {
@@ -16,18 +18,13 @@ fn shift_s(bb: u64) -> u64 {
 }
 
 #[inline(always)]
-fn shift_e(bb: u64) -> u64 {
+fn shift_w(bb: u64) -> u64 {
 	return (bb & MASK_E) >> 1;
 }
 
 #[inline(always)]
-fn shift_w(bb: u64) -> u64 {
+fn shift_e(bb: u64) -> u64 {
 	return (bb & MASK_W) << 1;
-}
-
-#[inline(always)]
-fn shift_nw(bb: u64) -> u64 {
-	return shift_n(shift_w(bb));
 }
 
 #[inline(always)]
@@ -36,13 +33,18 @@ fn shift_ne(bb: u64) -> u64 {
 }
 
 #[inline(always)]
-fn shift_sw(bb: u64) -> u64 {
-	return shift_s(shift_w(bb));
+fn shift_nw(bb: u64) -> u64 {
+	return shift_n(shift_w(bb));
 }
 
 #[inline(always)]
 fn shift_se(bb: u64) -> u64 {
 	return shift_s(shift_e(bb));
+}
+
+#[inline(always)]
+fn shift_sw(bb: u64) -> u64 {
+	return shift_s(shift_w(bb));
 }
 
 pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
@@ -63,23 +65,17 @@ pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	}
 	moves |= shift_s(captured) & open;
 	
-	captured = shift_w(bb_self) & bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_w(captured) & bb_enemy;
-	}
-	moves |= shift_w(captured) & open;
-	
 	captured = shift_e(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_e(captured) & bb_enemy;
 	}
 	moves |= shift_e(captured) & open;
 	
-	captured = shift_nw(bb_self) & bb_enemy;
+	captured = shift_w(bb_self) & bb_enemy;
 	for _ in 0..5 {
-		captured |= shift_nw(captured) & bb_enemy;
+		captured |= shift_w(captured) & bb_enemy;
 	}
-	moves |= shift_nw(captured) & open;
+	moves |= shift_w(captured) & open;
 	
 	captured = shift_ne(bb_self) & bb_enemy;
 	for _ in 0..5 {
@@ -87,17 +83,23 @@ pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	}
 	moves |= shift_ne(captured) & open;
 	
-	captured = shift_sw(bb_self) & bb_enemy;
+	captured = shift_nw(bb_self) & bb_enemy;
 	for _ in 0..5 {
-		captured |= shift_sw(captured) & bb_enemy;
+		captured |= shift_nw(captured) & bb_enemy;
 	}
-	moves |= shift_sw(captured) & open;
+	moves |= shift_nw(captured) & open;
 	
 	captured = shift_se(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_se(captured) & bb_enemy;
 	}
 	moves |= shift_se(captured) & open;
+	
+	captured = shift_sw(bb_self) & bb_enemy;
+	for _ in 0..5 {
+		captured |= shift_sw(captured) & bb_enemy;
+	}
+	moves |= shift_sw(captured) & open;
 	
 	return moves;
 	
@@ -146,52 +148,98 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	// use blcmsk to find which disks to flip
 	// test to make sure we flank. then use pdep to make flip mask
 	// also investigate SSE method https://github.com/abulmo/edax-reversi/blob/master/src/flip_sse.c
+	// https://www.chessprogramming.org/BMI2#PEXTBitboards
+	
+	// Kogge-Stone algorithm. Modified for Othello from
+	// https://www.chessprogramming.org/Kogge-Stone_Algorithm#Occluded_Fill
+	
+	// 2 directions (NE, SW) use the Dumb7Fill algorithm
+	// https://www.chessprogramming.org/Dumb7Fill#OccludedFill
+	// Kogge-Stone is vectorized with AVX2, which uses few, but slow, instructions.
+	// Processing 2 directions Dumb7fill, allows the CPU to parallelize AVX and normal registers.
+	// This uses 26% more instructions, but keeps IPC at 3.27 vs. 2.4 which is 7% faster
 	
 	let mut captured;
 	let mut flips = 0u64;
 	
 	*bb_self |= mov;
 	
-	captured = shift_n(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_n(captured) & *bb_enemy;
-	}
+	// NORTH
+	let mut pro = *bb_enemy;
+	captured = mov;
+	captured |= pro & (captured << 8);
+	pro &= (pro << 8);
+	captured |= pro & (captured << 16);
+	pro &= (pro << 16);
+	captured |= pro & (captured << 32);
+	// captured = shift_n(mov) & *bb_enemy;
+	// for _ in 0..5 {
+	// 	captured |= shift_n(captured) & *bb_enemy;
+	// }
 	if shift_n(captured) & *bb_self != 0 {
 		flips |= captured;
 	}
 	
-	captured = shift_s(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_s(captured) & *bb_enemy;
-	}
+	// SOUTH
+	pro = *bb_enemy;
+	captured = mov;
+	captured |= pro & (captured >>  8);
+	pro &= (pro >> 8);
+	captured |= pro & (captured >> 16);
+	pro &= (pro >> 16);
+	captured |= pro & (captured >> 32);
+	// captured = shift_s(mov) & *bb_enemy;
+	// for _ in 0..5 {
+	// 	captured |= shift_s(captured) & *bb_enemy;
+	// }
 	if shift_s(captured) & *bb_self != 0 {
 		flips |= captured;
 	}
 	
-	captured = shift_w(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_w(captured) & *bb_enemy;
-	}
-	if shift_w(captured) & *bb_self != 0 {
-		flips |= captured;
-	}
-	
-	captured = shift_e(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_e(captured) & *bb_enemy;
-	}
+	// EAST
+	pro = *bb_enemy;
+	captured = mov;
+	pro &= !A_FILE;
+	captured |= pro & (captured << 1);
+	pro &= (pro << 1);
+	captured |= pro & (captured << 2);
+	pro &= (pro << 2);
+	captured |= pro & (captured << 4);
+	// captured = shift_e(mov) & *bb_enemy;
+	// for _ in 0..5 {
+	// 	captured |= shift_e(captured) & *bb_enemy;
+	// }
 	if shift_e(captured) & *bb_self != 0 {
 		flips |= captured;
 	}
 	
-	captured = shift_nw(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_nw(captured) & *bb_enemy;
-	}
-	if shift_nw(captured) & *bb_self != 0 {
+	// WEST
+	pro = *bb_enemy;
+	captured = mov;
+	pro &= !H_FILE;
+	captured |= pro & (captured >> 1);
+	pro &= (pro >> 1);
+	captured |= pro & (captured >> 2);
+	pro &= (pro >> 2);
+	captured |= pro & (captured >> 4);
+	// captured = shift_w(mov) & *bb_enemy;
+	// for _ in 0..5 {
+	// 	captured |= shift_w(captured) & *bb_enemy;
+	// }
+	if shift_w(captured) & *bb_self != 0 {
 		flips |= captured;
 	}
 	
+	
+	// NORTH EAST
+	// pro = *bb_enemy;
+	// captured = mov;
+	// pro &= !A_FILE;
+	// captured |= pro & (captured << 9);
+	// pro &= (pro << 9);
+	// captured |= pro & (captured << 18);
+	// pro &= (pro << 18);
+	// captured |= pro & (captured << 36);
 	captured = shift_ne(mov) & *bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_ne(captured) & *bb_enemy;
@@ -200,19 +248,54 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 		flips |= captured;
 	}
 	
+	// NORTH WEST
+	pro = *bb_enemy;
+	captured = mov;
+	pro &= !H_FILE;
+	captured |= pro & (captured << 7);
+	pro &= (pro << 7);
+	captured |= pro & (captured << 14);
+	pro &= (pro << 14);
+	captured |= pro & (captured << 28);
+	// captured = shift_nw(mov) & *bb_enemy;
+	// for _ in 0..5 {
+	// 	captured |= shift_nw(captured) & *bb_enemy;
+	// }
+	if shift_nw(captured) & *bb_self != 0 {
+		flips |= captured;
+	}
+	
+	// SOUTH EAST
+	pro = *bb_enemy;
+	captured = mov;
+	pro &= !A_FILE;
+	captured |= pro & (captured >> 7);
+	pro &= (pro >> 7);
+	captured |= pro & (captured >> 14);
+	pro &= (pro >> 14);
+	captured |= pro & (captured >> 28);
+	// captured = shift_se(mov) & *bb_enemy;
+	// for _ in 0..5 {
+	// 	captured |= shift_se(captured) & *bb_enemy;
+	// }
+	if shift_se(captured) & *bb_self != 0 {
+		flips |= captured;
+	}
+	
+	// SOUTH WEST
+	// pro = *bb_enemy;
+	// captured = mov;
+	// pro &= !H_FILE;
+	// captured |= pro & (captured >> 9);
+	// pro &= (pro >> 9);
+	// captured |= pro & (captured >> 18);
+	// pro &= (pro >> 18);
+	// captured |= pro & (captured >> 36);
 	captured = shift_sw(mov) & *bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_sw(captured) & *bb_enemy;
 	}
 	if shift_sw(captured) & *bb_self != 0 {
-		flips |= captured;
-	}
-	
-	captured = shift_se(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_se(captured) & *bb_enemy;
-	}
-	if shift_se(captured) & *bb_self != 0 {
 		flips |= captured;
 	}
 	
