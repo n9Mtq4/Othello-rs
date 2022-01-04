@@ -151,11 +151,12 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	// Kogge-Stone algorithm. Modified for Othello from
 	// https://www.chessprogramming.org/Kogge-Stone_Algorithm#Occluded_Fill
 	
-	// 2 directions (NE, SW) use the Dumb7Fill algorithm
+	// 2 directions (NE, SW) use the Dumb7Fill algorithm in tune_zen2 mode
 	// https://www.chessprogramming.org/Dumb7Fill#OccludedFill
 	// Kogge-Stone is vectorized with AVX2, which uses few, but slow, instructions.
 	// Processing 2 directions Dumb7fill, allows the CPU to parallelize AVX and normal registers.
-	// This uses 26% more instructions, but keeps IPC at 3.27 vs. 2.4 which is 7% faster
+	// This uses 26% more instructions, but keeps IPC at 3.27 vs. 2.4 which is 7% faster on zen2
+	// On intel tigerlake, this function uses AVX-512 and using entirely Kogge-stone is 5% faster
 	
 	let mut captured;
 	let mut flips = 0u64;
@@ -230,17 +231,20 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	
 	
 	// NORTH EAST
-	// pro = *bb_enemy;
-	// captured = mov;
-	// pro &= !A_FILE;
-	// captured |= pro & (captured << 9);
-	// pro &= pro << 9;
-	// captured |= pro & (captured << 18);
-	// pro &= pro << 18;
-	// captured |= pro & (captured << 36);
-	captured = shift_ne(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_ne(captured) & *bb_enemy;
+	if cfg!(feature = "tune_zen2") {
+		captured = shift_ne(mov) & *bb_enemy;
+		for _ in 0..5 {
+			captured |= shift_ne(captured) & *bb_enemy;
+		}
+	} else {
+		pro = *bb_enemy;
+		captured = mov;
+		pro &= !A_FILE;
+		captured |= pro & (captured << 9);
+		pro &= pro << 9;
+		captured |= pro & (captured << 18);
+		pro &= pro << 18;
+		captured |= pro & (captured << 36);
 	}
 	if shift_ne(captured) & *bb_self != 0 {
 		flips |= captured;
@@ -281,17 +285,20 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	}
 	
 	// SOUTH WEST
-	// pro = *bb_enemy;
-	// captured = mov;
-	// pro &= !H_FILE;
-	// captured |= pro & (captured >> 9);
-	// pro &= pro >> 9;
-	// captured |= pro & (captured >> 18);
-	// pro &= pro >> 18;
-	// captured |= pro & (captured >> 36);
-	captured = shift_sw(mov) & *bb_enemy;
-	for _ in 0..5 {
-		captured |= shift_sw(captured) & *bb_enemy;
+	if cfg!(feature = "tune_zen2") {
+		captured = shift_sw(mov) & *bb_enemy;
+		for _ in 0..5 {
+			captured |= shift_sw(captured) & *bb_enemy;
+		}
+	} else {
+		pro = *bb_enemy;
+		captured = mov;
+		pro &= !H_FILE;
+		captured |= pro & (captured >> 9);
+		pro &= pro >> 9;
+		captured |= pro & (captured >> 18);
+		pro &= pro >> 18;
+		captured |= pro & (captured >> 36);
 	}
 	if shift_sw(captured) & *bb_self != 0 {
 		flips |= captured;
