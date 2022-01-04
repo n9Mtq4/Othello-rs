@@ -2,8 +2,6 @@
 
 use bitintr::{Blsi, Blsr};
 
-const MASK_E: u64 = 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110u64;
-const MASK_W: u64 = 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111u64;
 const A_FILE: u64 = 0x0101010101010101;
 const H_FILE: u64 = 0x8080808080808080;
 
@@ -19,12 +17,12 @@ fn shift_s(bb: u64) -> u64 {
 
 #[inline(always)]
 fn shift_w(bb: u64) -> u64 {
-	return (bb & MASK_E) >> 1;
+	return (bb & (!A_FILE)) >> 1;
 }
 
 #[inline(always)]
 fn shift_e(bb: u64) -> u64 {
-	return (bb & MASK_W) << 1;
+	return (bb & (!H_FILE)) << 1;
 }
 
 #[inline(always)]
@@ -168,9 +166,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	let mut pro = *bb_enemy;
 	captured = mov;
 	captured |= pro & (captured << 8);
-	pro &= (pro << 8);
+	pro &= pro << 8;
 	captured |= pro & (captured << 16);
-	pro &= (pro << 16);
+	pro &= pro << 16;
 	captured |= pro & (captured << 32);
 	// captured = shift_n(mov) & *bb_enemy;
 	// for _ in 0..5 {
@@ -184,9 +182,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	pro = *bb_enemy;
 	captured = mov;
 	captured |= pro & (captured >>  8);
-	pro &= (pro >> 8);
+	pro &= pro >> 8;
 	captured |= pro & (captured >> 16);
-	pro &= (pro >> 16);
+	pro &= pro >> 16;
 	captured |= pro & (captured >> 32);
 	// captured = shift_s(mov) & *bb_enemy;
 	// for _ in 0..5 {
@@ -201,9 +199,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	captured = mov;
 	pro &= !A_FILE;
 	captured |= pro & (captured << 1);
-	pro &= (pro << 1);
+	pro &= pro << 1;
 	captured |= pro & (captured << 2);
-	pro &= (pro << 2);
+	pro &= pro << 2;
 	captured |= pro & (captured << 4);
 	// captured = shift_e(mov) & *bb_enemy;
 	// for _ in 0..5 {
@@ -218,9 +216,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	captured = mov;
 	pro &= !H_FILE;
 	captured |= pro & (captured >> 1);
-	pro &= (pro >> 1);
+	pro &= pro >> 1;
 	captured |= pro & (captured >> 2);
-	pro &= (pro >> 2);
+	pro &= pro >> 2;
 	captured |= pro & (captured >> 4);
 	// captured = shift_w(mov) & *bb_enemy;
 	// for _ in 0..5 {
@@ -236,9 +234,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	// captured = mov;
 	// pro &= !A_FILE;
 	// captured |= pro & (captured << 9);
-	// pro &= (pro << 9);
+	// pro &= pro << 9;
 	// captured |= pro & (captured << 18);
-	// pro &= (pro << 18);
+	// pro &= pro << 18;
 	// captured |= pro & (captured << 36);
 	captured = shift_ne(mov) & *bb_enemy;
 	for _ in 0..5 {
@@ -253,9 +251,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	captured = mov;
 	pro &= !H_FILE;
 	captured |= pro & (captured << 7);
-	pro &= (pro << 7);
+	pro &= pro << 7;
 	captured |= pro & (captured << 14);
-	pro &= (pro << 14);
+	pro &= pro << 14;
 	captured |= pro & (captured << 28);
 	// captured = shift_nw(mov) & *bb_enemy;
 	// for _ in 0..5 {
@@ -270,9 +268,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	captured = mov;
 	pro &= !A_FILE;
 	captured |= pro & (captured >> 7);
-	pro &= (pro >> 7);
+	pro &= pro >> 7;
 	captured |= pro & (captured >> 14);
-	pro &= (pro >> 14);
+	pro &= pro >> 14;
 	captured |= pro & (captured >> 28);
 	// captured = shift_se(mov) & *bb_enemy;
 	// for _ in 0..5 {
@@ -287,9 +285,9 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	// captured = mov;
 	// pro &= !H_FILE;
 	// captured |= pro & (captured >> 9);
-	// pro &= (pro >> 9);
+	// pro &= pro >> 9;
 	// captured |= pro & (captured >> 18);
-	// pro &= (pro >> 18);
+	// pro &= pro >> 18;
 	// captured |= pro & (captured >> 36);
 	captured = shift_sw(mov) & *bb_enemy;
 	for _ in 0..5 {
