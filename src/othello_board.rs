@@ -331,9 +331,20 @@ pub fn wld_evaluation(black: u64, white: u64) -> i8 {
 	else { i8::MIN }
 }
 
+/// Evaluates the board at the end of the game
+/// Returns disk difference, DOES NOT add empty disks to the winner's score
 #[inline(always)]
 pub fn evaluation(black: u64, white: u64) -> i8 {
 	(black.count_ones() as i8) - (white.count_ones() as i8)
+}
+
+/// Evaluates the board at the end of the game
+/// Returns disk difference, DOES add empty disks to the winner's score
+/// Slightly slower than the simple evaluation, use that when possible
+#[inline(always)]
+pub fn evaluation_full(black: u64, white: u64) -> i8 {
+	let score = (black.count_ones() as i8) - (white.count_ones() as i8);
+	score + score.signum() * empty_disks(black, white) as i8
 }
 
 #[inline(always)]

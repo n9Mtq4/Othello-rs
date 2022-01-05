@@ -21,6 +21,8 @@ struct SearchParams {
 	use_book: bool,
 	/// If true will solve exact endgame, If false solves WLD
 	solve_end_exact: bool,
+	/// If true will do a WLD endgame search on deep searches (> 15 ply)
+	solve_end_adaptive: bool,
 	/// Mid game (nn_search) search depth
 	mid_depth: u8,
 	/// Endgame search depth
@@ -29,27 +31,30 @@ struct SearchParams {
 
 impl Display for SearchParams {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "SearchParams(utime={}, book={}, exact={}, mid_d={}, end_d={})",
-		       self.adj_time, self.use_book, self.solve_end_exact, self.mid_depth, self.end_depth)
+		write!(f, "SearchParams(tada={}, book={}, exact={}, egada={}, md={}, ed={})",
+		       self.adj_time, self.use_book, self.solve_end_exact, self.solve_end_adaptive, self.mid_depth, self.end_depth)
 	}
 }
 
 impl SearchParams {
 	
 	/// Decodes algorithm parameters requested from client
-	/// p: u16 with layout _TBSDDDDDDEEEEEE
+	/// params: __TBSADDDDDEEEEE
+	///         5432109876543210
 	/// T - bit to adjust based on time (1 = adjust params to fit in remaining time, 0 = ignore remaining time)
 	/// B - bit to use the opening book (1 = use book, 0 = no book)
 	/// S - bit to solve exact endgame (1 = exact, 0 = WLD)
-	/// D - 6 bits for neural network depth (0-63)
-	/// E - 6 bits for endgame depth (0-63)
+	/// A - bit to force WLD on deep endgame searches (WLD on eg depth > 15) (1 = WLD, 0 = exact)
+	/// D - 5 bits for neural network depth (0-31)
+	/// E - 5 bits for endgame depth (0-31)
 	fn from_u16(p: u16) -> Self {
 		
-		let mut end_depth = ((p >> 0) & 0b111111) as u8;
-		let mut mid_depth = ((p >> 6) & 0b111111) as u8;
-		let solve_end_exact = ((p >> 12) & 0b1) != 0;
-		let use_book = ((p >> 13) & 0b1) != 0;
-		let adj_time = ((p >> 14) & 0b1) != 0;
+		let mut end_depth = ((p >> 0) & 0b11111) as u8;
+		let mut mid_depth = ((p >> 5) & 0b11111) as u8;
+		let solve_end_adaptive = ((p >> 10) & 0b1) != 0;
+		let solve_end_exact = ((p >> 11) & 0b1) != 0;
+		let use_book = ((p >> 12) & 0b1) != 0;
+		let adj_time = ((p >> 13) & 0b1) != 0;
 		
 		// ensure not too deep
 		end_depth = end_depth.clamp(1, 22);
@@ -59,6 +64,7 @@ impl SearchParams {
 			adj_time,
 			use_book,
 			solve_end_exact,
+			solve_end_adaptive,
 			mid_depth,
 			end_depth
 		}
@@ -78,12 +84,20 @@ impl SearchParams {
 	/// Gets the window size for the endgame alphabeta search
 	/// If solve_end_exact is true, sets to 100, to find exact in -64 to 64
 	/// If solve_end_exact is false, sets to 1 for WLD
-	fn end_window(&self) -> i8 {
-		if self.solve_end_exact {
-			100
-		} else {
-			1
+	fn end_window(&self, empties: u8) -> i8 {
+		
+		// respect WLD bit
+		if !self.solve_end_exact {
+			return 1;
 		}
+		
+		// if adaptive eg, and it's going to be a deep search, do a WDL
+		if self.solve_end_adaptive && empties > 15 {
+			1
+		} else {
+			127
+		}
+		
 	}
 	
 }
@@ -102,9 +116,11 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 		return (65, i16::MAX);
 	}
 	
-	// if there are <= 18 disks left, solve the endgame
-	if empty_disks(me, enemy) <= params.end_depth {
-		let (mov, q) = solve_endgame_root(me, enemy, -params.end_window(), params.end_window());
+	// if there are <= eg depth disks left, solve the endgame
+	let empties = empty_disks(me, enemy);
+	if empties <= params.end_depth {
+		let window = params.end_window(empties);
+		let (mov, q) = solve_endgame_root(me, enemy, -window, window);
 		return (mov, 100 * (q as i16));
 	}
 	
@@ -128,12 +144,13 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 /// enemy: u64 - the bitboard for enemy player
 /// time: u16 - the remaining time for the game in 10ths of second
 /// params: u16 - algorithm params
-/// params: _TBSDDDDDDEEEEEE
-/// T - bit to adjust based on time (1 = adjust params to fit in remaining time)
-/// B - bit to use the opening book (1 = use book)
+/// params: __TBSADDDDDEEEEE
+/// T - bit to adjust based on time (1 = adjust params to fit in remaining time, 0 = ignore remaining time)
+/// B - bit to use the opening book (1 = use book, 0 = no book)
 /// S - bit to solve exact endgame (1 = exact, 0 = WLD)
-/// D - 6 bits for neural network depth (0-63)
-/// E - 6 bits for endgame depth
+/// A - bit to force WLD on deep endgame searches (WLD on eg depth > 15) (1 = WLD, 0 = exact)
+/// D - 5 bits for neural network depth (0-31)
+/// E - 5 bits for endgame depth (0-31)
 fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStream) {
 	
 	const PROT_SIZE: usize = 8 + 8 + 2 + 2;

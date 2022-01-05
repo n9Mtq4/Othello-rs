@@ -67,13 +67,14 @@ enemy is a u64 for the bitboard of the opponent
 
 time is a u16 with the remaining time for the entire game in 1/10ths of a second
 
-params is a u16 with layout _TBSDDDDDDEEEEEE
-_ - bit reserved for future use
+params is a u16 with layout __TBSADDDDDEEEEE
+_ - bit(s) reserved for future use
 T - bit to adjust based on time (1 = adjust params to fit in remaining time, 0 = ignore remaining time)
 B - bit to use the opening book (1 = use book, 0 = no book)
 S - bit to solve exact endgame (1 = exact, 0 = WLD)
-D - 6 bits for neural network depth (0-63)
-E - 6 bits for endgame depth (0-63)
+A - bit to force WLD on deep endgame searches (WLD on eg depth > 15) (1 = WLD, 0 = exact)
+D - 5 bits for neural network depth (0-31)
+E - 5 bits for endgame depth (0-31)
 
 The server will respond in the format !Bh (big-endian) of move, eval.
 
