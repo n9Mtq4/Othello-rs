@@ -95,7 +95,7 @@ impl SearchParams {
 		if self.solve_end_adaptive && empties > 15 {
 			1
 		} else {
-			127
+			64
 		}
 		
 	}
