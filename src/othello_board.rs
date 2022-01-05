@@ -321,14 +321,15 @@ pub fn game_over(bb_p1: u64, bb_p2: u64) -> bool {
 /// could pick loosing early as the best move if the neural network is pessimistic
 /// Inversely, it will delay killing the opponent early as continuing will allow for more
 /// disks to be played, thus improving the score.
-/// But, we should take the earliest win and delay the loss, so this returns i8::MAX
-/// if forced winning (end game early) and i8::MIN if forced loss (don't play an early losing move)
+/// But, we should take the earliest win and delay the loss, so this returns 65 + empties
+/// if forced winning (end game early) and -65 - empties if forced loss (don't play an early losing move)
+/// +/- empties makes negamax pick the earliest win rather than a win.
 #[inline(always)]
 pub fn wld_evaluation(black: u64, white: u64) -> i8 {
 	let q = evaluation(black, white);
 	if q == 0 { 0 }
-	else if q > 0 { i8::MAX }
-	else { i8::MIN }
+	else if q > 0 { 65 + empty_disks(black, white) as i8 }
+	else { -65 - empty_disks(black, white) as i8 }
 }
 
 /// Evaluates the board at the end of the game
