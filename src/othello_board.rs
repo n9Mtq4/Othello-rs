@@ -47,7 +47,6 @@ fn shift_sw(bb: u64) -> u64 {
 
 pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	
-	let open: u64 = !(bb_self | bb_enemy);
 	let mut moves: u64 = 0;
 	let mut captured: u64;
 	
@@ -55,51 +54,51 @@ pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	for _ in 0..5 {
 		captured |= shift_n(captured) & bb_enemy;
 	}
-	moves |= shift_n(captured) & open;
+	moves |= shift_n(captured);
 	
 	captured = shift_s(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_s(captured) & bb_enemy;
 	}
-	moves |= shift_s(captured) & open;
+	moves |= shift_s(captured);
 	
 	captured = shift_e(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_e(captured) & bb_enemy;
 	}
-	moves |= shift_e(captured) & open;
+	moves |= shift_e(captured);
 	
 	captured = shift_w(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_w(captured) & bb_enemy;
 	}
-	moves |= shift_w(captured) & open;
+	moves |= shift_w(captured);
 	
 	captured = shift_ne(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_ne(captured) & bb_enemy;
 	}
-	moves |= shift_ne(captured) & open;
+	moves |= shift_ne(captured);
 	
 	captured = shift_nw(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_nw(captured) & bb_enemy;
 	}
-	moves |= shift_nw(captured) & open;
+	moves |= shift_nw(captured);
 	
 	captured = shift_se(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_se(captured) & bb_enemy;
 	}
-	moves |= shift_se(captured) & open;
+	moves |= shift_se(captured);
 	
 	captured = shift_sw(bb_self) & bb_enemy;
 	for _ in 0..5 {
 		captured |= shift_sw(captured) & bb_enemy;
 	}
-	moves |= shift_sw(captured) & open;
+	moves |= shift_sw(captured);
 	
-	return moves;
+	return moves & !(bb_self | bb_enemy);
 	
 }
 
@@ -147,6 +146,7 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	// test to make sure we flank. then use pdep to make flip mask
 	// also investigate SSE method https://github.com/abulmo/edax-reversi/blob/master/src/flip_sse.c
 	// https://www.chessprogramming.org/BMI2#PEXTBitboards
+	// https://gitlab.com/rust-othello/8x8-othello
 	
 	// Kogge-Stone algorithm. Modified for Othello from
 	// https://www.chessprogramming.org/Kogge-Stone_Algorithm#Occluded_Fill
