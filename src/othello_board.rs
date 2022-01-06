@@ -48,6 +48,49 @@ fn shift_sw(bb: u64) -> u64 {
 
 pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 	
+	let mut flips = gen(bb_self, bb_enemy, -9);
+	flips |= gen(bb_self, bb_enemy, -8);
+	flips |= gen(bb_self, bb_enemy, -7);
+	flips |= gen(bb_self, bb_enemy, -1);
+	flips |= gen(bb_self, bb_enemy, 1);
+	flips |= gen(bb_self, bb_enemy, 7);
+	flips |= gen(bb_self, bb_enemy, 8);
+	flips |= gen(bb_self, bb_enemy, 9);
+	
+	return flips & !bb_self & !bb_enemy;
+}
+
+fn gen(bb_self: u64, bb_enemy: u64, dir: isize) -> u64 {
+	//rotate might be faster on AVX-512
+	fn shift(x: u64, y: isize) -> u64 {
+		if y > 0 {
+			x >> y
+		} else {
+			x << -y
+		}
+	}
+	let x = bb_self;
+	//if we change above to rotate, we should also modify the following
+	let y = bb_enemy
+		& match dir.rem_euclid(8) {
+		0 => !0,
+		1 | 7 => 0x7E7E_7E7E_7E7E_7E7E,
+		_ => unreachable!(),
+	};
+	let d = dir;
+	let x = x | y & shift(x, d);
+	let y = y & shift(y, d);
+	let d = d * 2;
+	let x = x | y & shift(x, d);
+	let y = y & shift(y, d);
+	let d = d * 2;
+	let x = x | y & shift(x, d);
+	shift(x ^ bb_self, dir)
+}
+
+
+pub fn generate_moves2(bb_self: u64, bb_enemy: u64) -> u64 {
+	
 	let mut moves: u64 = 0;
 	let mut captured: u64;
 	
