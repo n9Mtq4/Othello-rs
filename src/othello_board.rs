@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
-use bitintr::{Blsi, Blsr};
+use bitintr::{Blsi, Blsr, Pdep};
+use crate::consts;
 
 const A_FILE: u64 = 0x0101010101010101;
 const H_FILE: u64 = 0x8080808080808080;
@@ -134,6 +135,24 @@ pub fn number_of_moves(bb_self: u64, bb_enemy: u64) -> u8 {
 }
 
 pub fn make_move(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
+	/// https://gitlab.com/rust-othello/8x8-othello
+	let place = mov.trailing_zeros() as usize;
+	let diff = (0..4)
+		.map(|i| unsafe {
+			use bitintr::*;
+			use consts::*;
+			u64::from(*consts::RESULT.get_unchecked(
+				INDEX.get_unchecked(place)[i] as usize * 32
+					+ bb_self.pext(MASK.get_unchecked(place)[i][0]) as usize * 64
+					+ bb_enemy.pext(MASK.get_unchecked(place)[i][1]) as usize,
+			))
+			.pdep(MASK.get_unchecked(place)[i][1])
+		})
+		.fold(0, core::ops::BitOr::bitor);
+	return (bb_self ^ diff ^ mov, bb_enemy ^ diff);
+}
+
+pub fn make_move1(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
 	make_move_inplace(mov, &mut bb_self, &mut bb_enemy);
 	return (bb_self, bb_enemy);
 }
