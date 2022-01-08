@@ -197,7 +197,7 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 	// sort the child states, best one first
 	states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
 	
-	let mut best_move: u8 = 65;
+	let mut best_move: u8 = states[0].0;
 	
 	// for each child state
 	for (mov, me, enemy) in states {
