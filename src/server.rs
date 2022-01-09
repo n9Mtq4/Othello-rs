@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use byteorder::{NetworkEndian, WriteBytesExt};
 use tch::{CModule, Device, Kind};
+use threadpool::ThreadPool;
 use crate::neural_search::nnsearch_root;
 use crate::othello_board::{empty_disks, evaluation, game_over, generate_moves};
 use crate::endgame::solve_endgame_root;
@@ -104,7 +105,7 @@ impl SearchParams {
 
 /// Returns (best_move, centidisk_score) for the given position
 /// Performs search according to search params
-fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, params: &SearchParams) -> (u8, i16) {
+fn server_get_move(book: &OthelloBook, ts_model: &Arc<Mutex<CModule>>, me: u64, enemy: u64, params: &SearchParams) -> (u8, i16) {
 	
 	// if the game is over, return the evaluation
 	if game_over(me, enemy) {
@@ -132,7 +133,8 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 	}
 	
 	// otherwise perform a negamax neural network search
-	let (mov, q) = nnsearch_root(model, me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
+	let model = ts_model.lock().unwrap();
+	let (mov, q) = nnsearch_root(&*model, me, enemy, -640000, 640000, params.adjusted_mid_depth() as i8);
 	(mov, q as i16)
 	
 }
@@ -151,7 +153,7 @@ fn server_get_move(book: &OthelloBook, model: &CModule, me: u64, enemy: u64, par
 /// A - bit to force WLD on deep endgame searches (WLD on eg depth > 15) (1 = WLD, 0 = exact)
 /// D - 5 bits for neural network depth (0-31)
 /// E - 5 bits for endgame depth (0-31)
-fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStream) {
+fn server_handle_client(book: &OthelloBook, ts_model: &Arc<Mutex<CModule>>, mut stream: TcpStream) {
 	
 	const PROT_SIZE: usize = 8 + 8 + 2 + 2;
 	
@@ -188,7 +190,7 @@ fn server_handle_client(book: &OthelloBook, model: &CModule, mut stream: TcpStre
 	
 	// evaluate position
 	let before = Instant::now();
-	let (mov, q) = server_get_move(book, model, me, enemy, &search_params);
+	let (mov, q) = server_get_move(book, ts_model, me, enemy, &search_params);
 	let after = Instant::now();
 	
 	let ms = (after - before).as_millis();
@@ -239,15 +241,15 @@ pub fn server_start(port: u16) {
 	let listener = TcpListener::bind(format!("0.0.0.0:{}", port)).unwrap();
 	println!("Server listening on port {}", port);
 	
-	// accept connections and process them, spawning a new thread for each one
+	let pool = ThreadPool::new(8);
+	
 	for stream in listener.incoming() {
 		match stream {
 			Ok(stream) => {
 				let my_book = book.clone();
 				let my_model = model.clone();
-				thread::spawn(move || {
-					// TODO: only lock model when using it (now locks even for endgame search)
-					server_handle_client(&my_book, &my_model.lock().unwrap(), stream);
+				pool.execute(move || {
+					server_handle_client(&my_book, &my_model, stream);
 				});
 			}
 			Err(e) => {
