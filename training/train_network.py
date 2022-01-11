@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import numpy as np
 import torch
@@ -11,10 +11,10 @@ from othello_dataset import OthelloNegaDataset
 from torch.utils.data import DataLoader
 
 
-LR = 0.0002
-EPOCHS = 200
+LR = 0.0002 / 2
+EPOCHS = 50
 NUM_WORKERS = 16
-CSV_PATH = '~/workspace/OthelloGui/train_data/novello4.4M_av_ns.csv'
+CSV_PATH = '~/workspace/OthelloGui/train_data/novello4.9M_av_ns.csv'
 
 
 class ResBlock(nn.Module):
@@ -67,7 +67,7 @@ class ScaledMSELoss(nn.Module):
     def forward(self, inputs, targets):
         
         mse_loss = (inputs - targets) ** 2
-        weight = torch.exp(-torch.abs(8 * targets)) + 1
+        weight = 2 * torch.exp(-torch.abs(10 * targets)) + 1
         return torch.mean(mse_loss * weight)
 
 
@@ -83,6 +83,10 @@ def main():
     dataloader = DataLoader(dataset, batch_size=8192 // 2, shuffle=True, num_workers=NUM_WORKERS)
     
     model = OthelloNNet(512)
+    
+    model.load_state_dict(torch.load("model_3.pth")['model_state_dict'])
+    print("loaded model chpt")
+    
     model = model.cuda()
     
     print(model)
@@ -104,8 +108,8 @@ def train(model, dataloader):
         model.parameters(),
         lr=LR,
         num_epochs=EPOCHS,
-        # warmdown_start_pct=0.50,
-        # use_adabelief=True,
+        warmdown_start_pct=0.35,
+        warmdown_min_lr=1e-5,
         num_batches_per_epoch=len(dataloader)
     )
     

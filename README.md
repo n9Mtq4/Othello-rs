@@ -9,8 +9,8 @@ Othello-rs is competitive with the best humans at a meager search depth of 2.
 |--------------------------------------------------|---------------------|------|
 | Random moves                                     | 0                   | 809  |
 | Wold Champion Human                              | 2                   | 2450 |
-| Othello-rs (book=false, middepth=6, enddepth=20) | 0.5                 | 3211 |
-| Othello-rs (book=false, middepth=7, enddepth=20) | 1.5                 | 3301 |
+| Othello-rs (book=false, middepth=6, enddepth=20) | 0.5                 | 3230 |
+| Othello-rs (book=false, middepth=7, enddepth=20) | 1.5                 | 3320 |
 
 ## Opening Book
 
