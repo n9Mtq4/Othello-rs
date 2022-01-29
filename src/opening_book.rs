@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::fs::File;
 use byteorder::{LittleEndian, ReadBytesExt};
-use crate::othello_symmetry::{sym_invert_loc, sym_min_board};
+use xz2::read::XzDecoder;
+use crate::othello_symmetry::{sym_inverse_loc, sym_min_board};
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct OthelloBookKey {
@@ -32,7 +33,7 @@ pub fn search_book(book: &OthelloBook, me: u64, enemy: u64) -> Option<(u8, i16)>
 	// search book for the min board
 	// if found, invert the min sym transformation
 	match book.get(&key) {
-		Some(mq) => Some((sym_invert_loc(transform, mq.best_move), 50 * (mq.eval as i16))),
+		Some(mq) => Some((sym_inverse_loc(transform, mq.best_move), 50 * (mq.eval as i16))),
 		None => None
 	}
 	
@@ -43,20 +44,21 @@ pub fn read_book(file_name: &str) -> OthelloBook {
 	
 	let mut book: OthelloBook = HashMap::new();
 	
-	let mut file = File::open(&file_name).expect("Error opening book file");
+	let file = File::open(&file_name).expect("Error opening book file");
+	let mut decompressor = XzDecoder::new(file);
 	
 	loop {
 		
 		// try reading an entry
-		let me = match file.read_u64::<LittleEndian>() {
+		let me = match decompressor.read_u64::<LittleEndian>() {
 			Ok(res) => res,
 			Err(_) => break
 		};
 		
 		// if the first read succeeded, there must be another 8 + 1 + 1 bytes
-		let enemy = file.read_u64::<LittleEndian>().unwrap();
-		let best_move = file.read_u8().unwrap();
-		let eval = file.read_i8().unwrap();
+		let enemy = decompressor.read_u64::<LittleEndian>().unwrap();
+		let best_move = decompressor.read_u8().unwrap();
+		let eval = decompressor.read_i8().unwrap();
 		
 		// add the state to the book
 		let key = OthelloBookKey {

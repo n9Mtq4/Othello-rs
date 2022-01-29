@@ -89,7 +89,7 @@ const SYM_FLIP_TOPR_DIAGONAL: [u8; 64] = [
 /// Given a transform and a board location (like a move index)
 /// Applies the inverse of the transformation and returns the
 /// index of that location before the transformation was applied
-pub fn sym_invert_loc(transform: &[u8; 64], pos: u8) -> u8 {
+pub fn sym_inverse_loc(transform: &[u8; 64], pos: u8) -> u8 {
 	
 	// scan transform and return where i == pos
 	for i in 0u8..64u8 {

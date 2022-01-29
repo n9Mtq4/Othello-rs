@@ -212,7 +212,7 @@ pub fn server_start(port: u16) {
 	
 	// load opening book
 	// TODO: since we only read from the book, a lock isn't needed, although may be good to add RwLock anyway
-	let book = Arc::new(read_book("data/book.bin"));
+	let book = Arc::new(read_book("data/book.dat"));
 	println!("Loaded {} positions into book", book.len());
 	
 	// load pytorch model
