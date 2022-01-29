@@ -58,8 +58,8 @@ pub fn nnsearch_root(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta:
 	let keys: Vec<f32> = nnpredict_batch(model, &states.iter().map(|(_, m, e)| (*m, *e)).collect());
 	
 	// map the predictions to the states (applied move, me, enemy, q)
-	let mut states: Vec<(u8, u64, u64, i32)> = states.
-		iter()
+	let mut states: Vec<(u8, u64, u64, i32)> = states
+		.iter()
 		.zip(keys.iter())
 		.map(|((mov, m, e), q)| (*mov, *m, *e, (100.0 * 64.0 * (*q)) as i32))
 		.collect();
@@ -178,8 +178,8 @@ fn nnsearch_mo(model: &CModule, me: u64, enemy: u64, mut alpha: i32, beta: i32, 
 	
 	let keys: Vec<f32> = nnpredict_batch(model, &states);
 	
-	let mut states: Vec<(u64, u64, i32)> = states.
-		iter()
+	let mut states: Vec<(u64, u64, i32)> = states
+		.iter()
 		.zip(keys.iter())
 		.map(|((m, e), q)| (*m, *e, (100.0 * 64.0 * (*q)) as i32))
 		.collect();
