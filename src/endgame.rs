@@ -165,6 +165,38 @@ fn heuristic_eg_nega_d1(me: u64, enemy: u64) -> i32 {
 	
 }
 
+fn heuristic_eg_nega_dn(me: u64, enemy: u64, mut alpha: i32, beta: i32, depth: u8) -> i32 {
+	
+	let mut moves = generate_moves(me, enemy);
+	
+	if depth == 0 || moves == 0 {
+		return heuristic_eg_nega(me, enemy);
+	}
+	
+	let mut min_score = i32::MAX;
+	
+	// for each move
+	while moves != 0 {
+		
+		let mov = next_bit_move(&mut moves);
+		
+		let (me, enemy) = make_move(mov, me, enemy);
+		let q = -heuristic_eg_nega_dn(enemy, me, -beta, -alpha, depth - 1);
+		
+		if q >= beta {
+			return beta; // fail-hard beta-cutoff
+		}
+		
+		if q > alpha {
+			alpha = q;
+		}
+		
+	}
+	
+	return alpha;
+	
+}
+
 /// Solves the endgame.
 /// Fail-hard negamax
 /// Returns (move, eval)
@@ -195,14 +227,15 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 		.collect();
 	
 	// sort the child states, best one first
-	states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
+	// states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
+	states.sort_by_cached_key(|(_, me, enemy)| heuristic_eg_nega_dn(*enemy, *me, -64000, 64000, 4));
 	
 	let mut best_move: u8 = states[0].0;
 	
 	// for each child state
 	for (mov, me, enemy) in states {
 		
-		let q = -solve_endgame_mo(enemy, me, -beta, -alpha, OPTIMAL_STOP_MO_AT_EMPTIES);
+		let q = -solve_endgame_dynamicmo(enemy, me, -beta, -alpha, OPTIMAL_STOP_MO_AT_EMPTIES);
 		
 		if q >= beta {
 			return (mov as u8, beta); // fail-hard beta-cutoff
@@ -216,6 +249,62 @@ pub fn solve_endgame_root(me: u64, enemy: u64, mut alpha: i8, beta: i8) -> (u8, 
 	}
 	
 	return (best_move, alpha);
+	
+}
+
+/// Fail-hard negamax for endgame solving
+/// Uses move ordering for states with more than stop_mo_at_empties number of empty disks
+/// Optimal stop_mo_at_empties=7
+/// https://www.chessprogramming.org/Alpha-Beta
+fn solve_endgame_dynamicmo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_empties: u8) -> i8 {
+	
+	// if the game is over, evaluate who won
+	if game_over(me, enemy) {
+		return evaluation(me, enemy);
+	}
+	
+	// get possible moves
+	let moves = generate_moves(me, enemy);
+	
+	// if no moves, pass
+	if moves == 0 {
+		return -solve_endgame_dynamicmo(enemy, me, -beta, -alpha, stop_mo_at_empties);
+	}
+	
+	// apply each move and get the state
+	let mut states: Vec<(u64, u64)> = to_bit_move_vec(moves)
+		.iter()
+		.map(|mov| make_move(*mov, me, enemy))
+		.collect();
+	
+	// sort the child states, best one first
+	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
+	// states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
+	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega_dn(*enemy, *me, -64000, 64000, 4));
+	
+	let empty_disks = empty_disks(me, enemy);
+	
+	// for each child state
+	for (me, enemy) in states {
+		
+		// stop ordering the moves if the empty disks is smaller than the cutoff
+		let q = if empty_disks > 17 {
+			-solve_endgame_dynamicmo(enemy, me, -beta, -alpha, stop_mo_at_empties)
+		} else {
+			-solve_endgame_mo(enemy, me, -beta, -alpha, stop_mo_at_empties)
+		};
+		
+		if q >= beta {
+			return beta; // fail-hard beta-cutoff
+		}
+		
+		if q > alpha {
+			alpha = q;
+		}
+		
+	}
+	
+	return alpha;
 	
 }
 
@@ -246,6 +335,7 @@ fn solve_endgame_mo(me: u64, enemy: u64, mut alpha: i8, beta: i8, stop_mo_at_emp
 	
 	// sort the child states, best one first
 	// benchmark: sort_by_key=39.54s, sort_unstable_by_key=39.79s, sort_by_cached_key=38.74s
+	// states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
 	states.sort_by_cached_key(|(me, enemy)| heuristic_eg_nega_d1(*enemy, *me));
 	
 	let empty_disks = empty_disks(me, enemy);
