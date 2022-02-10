@@ -143,6 +143,44 @@ pub fn sym_min_board(me: u64, enemy: u64) -> (u64, u64, &'static [u8; 64]) {
 	
 }
 
+/// Find the minimum symmetry of a board using bb transforms
+/// Each board position has 8 symmetries, this will find the minimum one
+/// Returns (me, enemy)
+pub fn sym_min_board_fast(me: u64, enemy: u64) -> (u64, u64, ) {
+	
+	// all the symmetries that can be applied
+	let syms: [fn(u64) -> u64; 7] = [
+		sym_rotate_90cc,
+		sym_rotate_180cc,
+		sym_rotate_270cc,
+		sym_flip_x_axis,
+		sym_flip_y_axis,
+		sym_flip_topl_diagonal,
+		sym_flip_topr_diagonal,
+	];
+	
+	// start with identity
+	let mut min_m = me;
+	let mut min_e = enemy;
+	
+	for sym in syms {
+		
+		// apply a symmetry
+		let m = sym(me);
+		let e = sym(enemy);
+		
+		// if we found a smaller me, or me is the same, but enemy is smaller, we found a smaller board
+		if (m < min_m) || ((m == min_m) && (e < min_e)) {
+			min_m = m;
+			min_e = e;
+		}
+		
+	}
+	
+	return (min_m, min_e);
+	
+}
+
 /// Applies a transform to me and enemy
 fn sym_apply_to(transform: &[u8; 64], m: u64, e: u64) -> (u64, u64) {
 	
@@ -166,4 +204,58 @@ fn sym_apply_to_bb(transform: &[u8; 64], bb: u64) -> u64 {
 	
 	return new_board;
 	
+}
+
+fn sym_flip_x_axis(x: u64) -> u64 {
+	x.swap_bytes()
+}
+
+fn sym_flip_y_axis(mut x: u64) -> u64 {
+	let k1: u64 = 0x5555555555555555u64;
+	let k2: u64 = 0x3333333333333333u64;
+	let k4: u64 = 0x0f0f0f0f0f0f0f0fu64;
+	x = ((x >> 1) & k1) +  2*(x & k1);
+	x = ((x >> 2) & k2) +  4*(x & k2);
+	x = ((x >> 4) & k4) + 16*(x & k4);
+	return x;
+}
+
+fn sym_rotate_90cc(x: u64) -> u64 {
+	sym_flip_x_axis(sym_flip_topl_diagonal(x))
+}
+
+fn sym_rotate_180cc(x: u64) -> u64 {
+	sym_flip_y_axis(sym_flip_x_axis(x))
+}
+
+fn sym_rotate_270cc(x: u64) -> u64 {
+	sym_flip_topl_diagonal(sym_flip_x_axis(x))
+}
+
+fn sym_flip_topl_diagonal(mut x: u64) -> u64 {
+	let mut t: u64;
+	let k1 = 0x5500550055005500u64;
+	let k2 = 0x3333000033330000u64;
+	let k4 = 0x0f0f0f0f00000000u64;
+	t  = k4 & (x ^ (x << 28));
+	x ^=       t ^ (t >> 28) ;
+	t  = k2 & (x ^ (x << 14));
+	x ^=       t ^ (t >> 14) ;
+	t  = k1 & (x ^ (x <<  7));
+	x ^=       t ^ (t >>  7) ;
+	return x;
+}
+
+fn sym_flip_topr_diagonal(mut x: u64) -> u64 {
+	let mut t: u64;
+	let k1 = 0xaa00aa00aa00aa00u64;
+	let k2 = 0xcccc0000cccc0000u64;
+	let k4 = 0xf0f0f0f00f0f0f0fu64;
+	t  =       x ^ (x << 36) ;
+	x ^= k4 & (t ^ (x >> 36));
+	t  = k2 & (x ^ (x << 18));
+	x ^=       t ^ (t >> 18) ;
+	t  = k1 & (x ^ (x <<  9));
+	x ^=       t ^ (t >>  9) ;
+	return x;
 }

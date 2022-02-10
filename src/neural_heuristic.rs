@@ -2,9 +2,12 @@
 
 use tch::{CModule, Device, Tensor};
 use crate::othello_board::{game_over, generate_moves, make_move, next_bit_move, to_bit_move_vec, wld_evaluation};
+use crate::othello_symmetry::sym_min_board_fast;
 
 /// Convert an othello board into a tensor
 fn board_to_tensor(me: u64, enemy: u64) -> Tensor {
+	
+	let (me, enemy) = sym_min_board_fast(me, enemy);
 	
 	let mut data: [f32; 64] = [0.0; 64];
 	
