@@ -11,10 +11,11 @@ from othello_dataset import OthelloNegaDataset
 from torch.utils.data import DataLoader
 
 
-LR = 0.0002 / 2
+# LR = 0.0002
+LR = 2e-5
 EPOCHS = 50
 NUM_WORKERS = 16
-CSV_PATH = '~/workspace/OthelloGui/train_data/novello4.9M_av_ns.csv'
+CSV_PATH = '~/workspace/OthelloGui/train_data/novello6.3M_av_ns.csv'
 
 
 class ResBlock(nn.Module):
@@ -84,7 +85,7 @@ def main():
     
     model = OthelloNNet(512)
     
-    model.load_state_dict(torch.load("model_3.pth")['model_state_dict'])
+    model.load_state_dict(torch.load("old_models/model_5.pth")['model_state_dict'])
     print("loaded model chpt")
     
     model = model.cuda()
@@ -109,7 +110,7 @@ def train(model, dataloader):
         lr=LR,
         num_epochs=EPOCHS,
         warmdown_start_pct=0.35,
-        warmdown_min_lr=1e-5,
+        warmdown_min_lr=1e-5 / 4,
         num_batches_per_epoch=len(dataloader)
     )
     

@@ -51,8 +51,6 @@ class OthelloNegaDataset(Dataset):
     
     def __getitem__(self, idx):
         
-        sym = random.randrange(8)
-        
         if self.player[idx] == 0:
             me = self.black[idx]
             enemy = self.white[idx]
@@ -62,11 +60,9 @@ class OthelloNegaDataset(Dataset):
             enemy = self.black[idx]
             q = -self.score[idx] / 64.0
         
-        # emphasize the q near 0 so the model focuses more on win/loss
-        # over exactly how many disks it will win by
-        # q = np.tanh(2.0 * q)
-        
         board_vec = long2vec(me, enemy)
+        
+        sym = random.randrange(8)
         board_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], board_vec)
         
         return torch.from_numpy(board_vec), torch.tensor([q])
