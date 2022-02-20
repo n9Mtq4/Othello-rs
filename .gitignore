@@ -8,3 +8,4 @@ __pycache__
 training/ranger21
 *.pth
 libs
+data
