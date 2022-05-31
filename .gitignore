@@ -6,6 +6,8 @@ __pycache__
 *.iml
 
 training/ranger21
+training/runs
+
 *.pth
 libs
 data
