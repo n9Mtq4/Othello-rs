@@ -93,8 +93,8 @@ impl SearchParams {
 		}
 		
 		// if adaptive eg, and it's going to be a deep search, do a WDL
-		if self.solve_end_adaptive && empties > 15 {
-			1
+		if self.solve_end_adaptive && empties > 17 {
+			32
 		} else {
 			64
 		}
