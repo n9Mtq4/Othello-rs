@@ -9,13 +9,17 @@ fn board_to_tensor(me: u64, enemy: u64) -> Tensor {
 	
 	let (me, enemy) = sym_min_board_fast(me, enemy);
 	
-	let mut data: [f32; 64] = [0.0; 64];
+	let mut data: [f32; 128] = [0.0; 128];
 	
 	for i in 0..64 {
 		if me & (1 << i) != 0 {
 			data[i] = 1.0;
-		} else if enemy & (1 << i) != 0 {
-			data[i] = -1.0;
+		}
+	}
+	
+	for i in 0..64 {
+		if enemy & (1 << i) != 0 {
+			data[i + 64] = 1.0;
 		}
 	}
 	
