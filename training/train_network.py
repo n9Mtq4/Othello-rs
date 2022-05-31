@@ -1,9 +1,10 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.tensorboard import SummaryWriter
 from ranger21.ranger21 import Ranger21
 from tqdm import tqdm
 
@@ -11,11 +12,12 @@ from othello_dataset import OthelloNegaDataset
 from torch.utils.data import DataLoader
 
 
-# LR = 0.0002
-LR = 2e-5
-EPOCHS = 50
-NUM_WORKERS = 16
-CSV_PATH = '~/workspace/OthelloGui/train_data/novello6.3M_av_ns.csv'
+LR = 0.0005
+# LR = 2e-5
+EPOCHS = 60
+BATCH_SIZE = 8192 // 2
+NUM_WORKERS = 6
+CSV_PATH = '/home/will/workspace/OthelloGui/train_data/novello6.4M_av_ns.npz'
 
 
 class ResBlock(nn.Module):
@@ -24,7 +26,8 @@ class ResBlock(nn.Module):
         super().__init__()
         self.l1 = nn.Linear(f, f)
         self.a1 = nn.ReLU()
-        self.l2 = nn.Linear(f, f)
+        self.l2 = nn.Linear(f, f, bias=False)
+        self.bn = nn.BatchNorm1d(f)
         self.a2 = nn.ReLU()
     
     def forward(self, x):
@@ -32,26 +35,23 @@ class ResBlock(nn.Module):
         x = self.l1(x)
         x = self.a1(x)
         x = self.l2(x)
+        x = self.bn(x)
         x = self.a2(x + resid)
         return x
 
 
 class OthelloNNet(nn.Module):
     
-    def __init__(self, n):
+    def __init__(self, n, blocks):
         super().__init__()
+        res_blocks = [ResBlock(n) for _ in range(blocks)]
         self.seq = nn.Sequential(
-            nn.Linear(64, n),
+            nn.Linear(128, n),
             nn.ReLU(),
-            ResBlock(n),
-            ResBlock(n),
-            ResBlock(n),
-            ResBlock(n),
-            ResBlock(n),
-            ResBlock(n),
-            nn.Linear(n, n // 4),
+            *res_blocks,
+            nn.Linear(n, 64),
             nn.ReLU(),
-            nn.Linear(n // 4, 1),
+            nn.Linear(64, 1),
             nn.Tanh(),
         )
     
@@ -66,7 +66,6 @@ class ScaledMSELoss(nn.Module):
         super().__init__()
     
     def forward(self, inputs, targets):
-        
         mse_loss = (inputs - targets) ** 2
         weight = 2 * torch.exp(-torch.abs(10 * targets)) + 1
         return torch.mean(mse_loss * weight)
@@ -81,12 +80,19 @@ def main():
     
     print("Loading data...")
     dataset = OthelloNegaDataset(CSV_PATH)
-    dataloader = DataLoader(dataset, batch_size=8192 // 2, shuffle=True, num_workers=NUM_WORKERS)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        num_workers=NUM_WORKERS,
+        prefetch_factor=12,
+        pin_memory=True,
+    )
     
-    model = OthelloNNet(512)
+    model = OthelloNNet(1024, 4)
     
-    model.load_state_dict(torch.load("old_models/model_5.pth")['model_state_dict'])
-    print("loaded model chpt")
+    # model.load_state_dict(torch.load("old_models/model_5.pth")['model_state_dict'])
+    # print("loaded model chpt")
     
     model = model.cuda()
     
@@ -103,6 +109,8 @@ def main():
 
 def train(model, dataloader):
     
+    writer = SummaryWriter()
+    
     criterion = ScaledMSELoss()
     
     optimizer = Ranger21(
@@ -110,7 +118,7 @@ def train(model, dataloader):
         lr=LR,
         num_epochs=EPOCHS,
         warmdown_start_pct=0.35,
-        warmdown_min_lr=1e-5 / 4,
+        warmdown_min_lr=1e-6 / 4,
         num_batches_per_epoch=len(dataloader)
     )
     
@@ -120,15 +128,16 @@ def train(model, dataloader):
         
         running_loss = []
         
-        for step, (x, y) in tqdm(enumerate(dataloader), total=len(dataloader)):
+        for step, (me, enemy, y) in tqdm(enumerate(dataloader), total=len(dataloader)):
             
-            x = x.cuda()
-            y = y.cuda()
+            x = torch.cat((me, enemy), dim=1).float().cuda(non_blocking=True)
+            y = y.float().cuda(non_blocking=True)
             
             optimizer.zero_grad()
             
-            x_out = model(x.float())
-            loss = criterion(x_out, y.float())
+            with torch.autocast(device_type='cuda', dtype=torch.bfloat16):
+                x_out = model(x)
+                loss = criterion(x_out, y)
             
             running_loss.append(loss.cpu().detach().numpy())
             
@@ -141,6 +150,7 @@ def train(model, dataloader):
         }, f"chpt_{epoch + 1}.pth")
     
         print(f"epoch={epoch + 1}/{EPOCHS} - loss={np.mean(running_loss)}")
+        writer.add_scalar('Loss/train', np.mean(running_loss), epoch)
 
 
 def save_torchscript(model):

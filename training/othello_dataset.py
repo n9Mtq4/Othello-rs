@@ -8,7 +8,15 @@ import othello_symmetry
 
 
 @njit(nogil=True)
-def long2vec(me, enemy):
+def board2vec(bb):
+    v = np.zeros(64)
+    for i in np.arange(64, dtype=np.uint64):
+        v[i] = (bb >> i) & np.uint64(1)
+    return v
+
+
+@njit(nogil=True)
+def longs2vec(me, enemy):
     v = np.zeros(64)
     for i in range(64):
         if me & np.uint64(1 << i) != 0:
@@ -22,47 +30,51 @@ class OthelloNegaDataset(Dataset):
     
     def __init__(
         self,
-        csv_path,
+        data_path,
     ):
-        self.csv_path = csv_path
-        df = pd.read_csv(
-            csv_path,
-            names=['player', 'black', 'white', 'score', 'moves', 'move'],
-            dtype={
-                'player': np.int8,
-                'black': np.uint64,
-                'white': np.uint64,
-                'score': np.float32,
-                'moves': np.int8,
-                'move': np.int8
-            }
-        )
-        self.len = len(df)
-        self.player = df['player'].values
-        self.black = df['black'].values
-        self.white = df['white'].values
-        self.score = df['score'].values
-        # self.moves = df['moves'].values
-        # self.move = df['move'].values
-        del df
+        self.data_path = data_path
+        if self.data_path.endswith('.csv'):
+            df = pd.read_csv(
+                data_path,
+                names=['me', 'enemy', 'score', 'moves', 'move'],
+                dtype={
+                    'me': np.uint64,
+                    'enemy': np.uint64,
+                    'score': np.float32,
+                    'moves': np.int8,
+                    'move': np.int8
+                }
+            )
+            self.len = len(df)
+            self.me = df['me'].values
+            self.enemy = df['enemy'].values
+            self.score = df['score'].values
+            # self.moves = df['moves'].values
+            # self.move = df['move'].values
+            del df
+        elif self.data_path.endswith('.npz'):
+            with np.load(data_path) as data:
+                self.me = data['me']
+                self.enemy = data['enemy']
+                self.score = data['score']
+                self.len = len(self.score)
+        else:
+            raise RuntimeError(f'data_path must be a .csv or .npz file. Got {data_path}')
     
     def __len__(self):
         return self.len
     
     def __getitem__(self, idx):
         
-        if self.player[idx] == 0:
-            me = self.black[idx]
-            enemy = self.white[idx]
-            q = self.score[idx] / 64.0
-        else:
-            me = self.white[idx]
-            enemy = self.black[idx]
-            q = -self.score[idx] / 64.0
+        me = self.me[idx]
+        enemy = self.enemy[idx]
+        q = self.score[idx] / 64.0
         
-        board_vec = long2vec(me, enemy)
+        me_vec = board2vec(me)
+        enemy_vec = board2vec(enemy)
         
-        sym = random.randrange(8)
-        board_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], board_vec)
+        # sym = random.randrange(8)
+        # me_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], me_vec)
+        # enemy_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], enemy_vec)
         
-        return torch.from_numpy(board_vec), torch.tensor([q])
+        return torch.from_numpy(me_vec), torch.from_numpy(enemy_vec), torch.tensor([q])
