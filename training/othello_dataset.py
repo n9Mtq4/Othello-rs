@@ -73,8 +73,8 @@ class OthelloNegaDataset(Dataset):
         me_vec = board2vec(me)
         enemy_vec = board2vec(enemy)
         
-        # sym = random.randrange(8)
-        # me_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], me_vec)
-        # enemy_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], enemy_vec)
+        sym = random.randrange(8)
+        me_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], me_vec)
+        enemy_vec = othello_symmetry.apply_to_board(othello_symmetry.SYMMETRIES[sym], enemy_vec)
         
         return torch.from_numpy(me_vec), torch.from_numpy(enemy_vec), torch.tensor([q])
