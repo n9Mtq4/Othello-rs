@@ -6,6 +6,7 @@ mod neural_search;
 mod server;
 mod opening_book;
 mod othello_symmetry;
+mod board_consts;
 
 use crate::server::server_start;
 

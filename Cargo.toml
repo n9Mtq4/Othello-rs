@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tch = "0.7.2"
+tch = "0.8.0"
 byteorder = "1.4.3"
 bitintr = "0.3.0"
 threadpool = "1.8.1"
@@ -17,6 +17,7 @@ default = []
 large_batch = []
 gpu = ["large_batch"]
 tune_zen2 = []
+bmi2 = []
 
 [profile.release]
 opt-level = 3

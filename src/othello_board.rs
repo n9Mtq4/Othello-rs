@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
-use bitintr::{Blsi, Blsr};
+use bitintr::{Blsi, Blsr, Pdep};
+use tch::CModule;
+use crate::board_consts;
+use crate::neural_heuristic::{nnpredict_d1, nnpredict_dn};
 
 const A_FILE: u64 = 0x0101010101010101;
 const H_FILE: u64 = 0x8080808080808080;
@@ -45,7 +48,70 @@ fn shift_sw(bb: u64) -> u64 {
 	return shift_s(shift_w(bb));
 }
 
+/// Use neural network to evaluate a state
+#[inline(always)]
 pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
+	if cfg!(feature = "bmi2") {
+		generate_moves_bmi2(bb_self, bb_enemy)
+	} else {
+		generate_moves_avx(bb_self, bb_enemy)
+	}
+}
+
+#[inline(always)]
+pub fn make_move(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
+	if cfg!(feature = "bmi2") {
+		make_move_bmi2(mov, bb_self, bb_enemy)
+	} else {
+		make_move_avx(mov, bb_self, bb_enemy)
+	}
+}
+
+fn generate_moves_bmi2(bb_self: u64, bb_enemy: u64) -> u64 {
+	
+	let mut flips = gen(bb_self, bb_enemy, -9);
+	flips |= gen(bb_self, bb_enemy, -8);
+	flips |= gen(bb_self, bb_enemy, -7);
+	flips |= gen(bb_self, bb_enemy, -1);
+	flips |= gen(bb_self, bb_enemy, 1);
+	flips |= gen(bb_self, bb_enemy, 7);
+	flips |= gen(bb_self, bb_enemy, 8);
+	flips |= gen(bb_self, bb_enemy, 9);
+	
+	return flips & !bb_self & !bb_enemy;
+	
+}
+
+fn gen(bb_self: u64, bb_enemy: u64, dir: isize) -> u64 {
+	// https://gitlab.com/rust-othello/8x8-othello
+	//rotate might be faster on AVX-512
+	fn shift(x: u64, y: isize) -> u64 {
+		if y > 0 {
+			x >> y
+		} else {
+			x << -y
+		}
+	}
+	let x = bb_self;
+	//if we change above to rotate, we should also modify the following
+	let y = bb_enemy
+		& match dir.rem_euclid(8) {
+		0 => !0,
+		1 | 7 => 0x7E7E_7E7E_7E7E_7E7E,
+		_ => unreachable!(),
+	};
+	let d = dir;
+	let x = x | y & shift(x, d);
+	let y = y & shift(y, d);
+	let d = d * 2;
+	let x = x | y & shift(x, d);
+	let y = y & shift(y, d);
+	let d = d * 2;
+	let x = x | y & shift(x, d);
+	shift(x ^ bb_self, dir)
+}
+
+fn generate_moves_avx(bb_self: u64, bb_enemy: u64) -> u64 {
 	
 	let mut moves: u64 = 0;
 	let mut captured: u64;
@@ -133,7 +199,25 @@ pub fn number_of_moves(bb_self: u64, bb_enemy: u64) -> u8 {
 	return generate_moves(bb_self, bb_enemy).count_ones() as u8;
 }
 
-pub fn make_move(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
+fn make_move_bmi2(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
+	// https://gitlab.com/rust-othello/8x8-othello
+	let place = mov.trailing_zeros() as usize;
+	let diff = (0..4)
+		.map(|i| unsafe {
+			use bitintr::*;
+			use board_consts::*;
+			u64::from(*RESULT.get_unchecked(
+				INDEX.get_unchecked(place)[i] as usize * 32
+					+ bb_self.pext(MASK.get_unchecked(place)[i][0]) as usize * 64
+					+ bb_enemy.pext(MASK.get_unchecked(place)[i][1]) as usize,
+			))
+			.pdep(MASK.get_unchecked(place)[i][1])
+		})
+		.fold(0, core::ops::BitOr::bitor);
+	return (bb_self ^ diff ^ mov, bb_enemy ^ diff);
+}
+
+pub fn make_move_avx(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
 	make_move_inplace(mov, &mut bb_self, &mut bb_enemy);
 	return (bb_self, bb_enemy);
 }
@@ -309,6 +393,7 @@ pub fn make_move_inplace(mov: u64, bb_self: &mut u64, bb_enemy: &mut u64) {
 	
 }
 
+#[inline(always)]
 pub fn game_over(bb_p1: u64, bb_p2: u64) -> bool {
 	return (bb_p1 | bb_p2 == u64::MAX) ||
 		(generate_moves(bb_p1, bb_p2) == 0 &&

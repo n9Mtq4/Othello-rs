@@ -7,6 +7,7 @@ __pycache__
 
 training/ranger21
 training/runs
+training/*.pt
 
 *.pth
 libs
