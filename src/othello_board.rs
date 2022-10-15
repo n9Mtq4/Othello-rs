@@ -1,9 +1,7 @@
 #![allow(dead_code)]
 
-use bitintr::{Blsi, Blsr, Pdep};
-use tch::CModule;
+use bitintr::{Blsi, Blsr};
 use crate::board_consts;
-use crate::neural_heuristic::{nnpredict_d1, nnpredict_dn};
 
 const A_FILE: u64 = 0x0101010101010101;
 const H_FILE: u64 = 0x8080808080808080;
@@ -59,7 +57,7 @@ pub fn generate_moves(bb_self: u64, bb_enemy: u64) -> u64 {
 }
 
 #[inline(always)]
-pub fn make_move(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
+pub fn make_move(mov: u64, bb_self: u64, bb_enemy: u64) -> (u64, u64) {
 	if cfg!(feature = "bmi2") {
 		make_move_bmi2(mov, bb_self, bb_enemy)
 	} else {
@@ -199,7 +197,7 @@ pub fn number_of_moves(bb_self: u64, bb_enemy: u64) -> u8 {
 	return generate_moves(bb_self, bb_enemy).count_ones() as u8;
 }
 
-fn make_move_bmi2(mov: u64, mut bb_self: u64, mut bb_enemy: u64) -> (u64, u64) {
+fn make_move_bmi2(mov: u64, bb_self: u64, bb_enemy: u64) -> (u64, u64) {
 	// https://gitlab.com/rust-othello/8x8-othello
 	let place = mov.trailing_zeros() as usize;
 	let diff = (0..4)
